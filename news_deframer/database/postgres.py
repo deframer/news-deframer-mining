@@ -1,7 +1,8 @@
 import logging
+
 import psycopg2
 
-from miner.config import Config
+from news_deframer.config import Config
 
 logger = logging.getLogger(__name__)
 

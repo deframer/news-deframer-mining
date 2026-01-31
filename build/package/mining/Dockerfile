@@ -12,11 +12,11 @@ ENV PYTHONUNBUFFERED=1 \
 
 # Copy project files
 COPY pyproject.toml README.md uv.lock* ./
-COPY miner/ miner/
+COPY news_deframer/ news_deframer/
 
 # Install dependencies and the application
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv pip install --system .
 
 # Run the application
-CMD ["python", "-m", "miner.main", "mine"]
+CMD ["miner-cli", "poll"]

@@ -1,8 +1,8 @@
 import unittest
 from unittest.mock import MagicMock, patch
 
-from miner.config import Config
-from miner.postgres import Postgres
+from news_deframer.config import Config
+from news_deframer.database.postgres import Postgres
 
 
 class TestPostgres(unittest.TestCase):
@@ -15,7 +15,7 @@ class TestPostgres(unittest.TestCase):
         )
         self.db = Postgres(self.config)
 
-    @patch("miner.postgres.psycopg2.connect")
+    @patch("news_deframer.database.postgres.psycopg2.connect")
     def test_get_date_success(self, mock_connect):
         """
         Test that get_date connects, executes query, and returns the result.
@@ -42,7 +42,7 @@ class TestPostgres(unittest.TestCase):
         mock_connect.assert_called_once_with(self.config.dsn)
         mock_cursor.execute.assert_called_once_with("SELECT now();")
 
-    @patch("miner.postgres.psycopg2.connect")
+    @patch("news_deframer.database.postgres.psycopg2.connect")
     def test_get_date_failure(self, mock_connect):
         """
         Test that database connection errors are re-raised.
