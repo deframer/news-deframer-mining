@@ -5,7 +5,7 @@ from typing import List, Tuple
 from uuid import uuid4
 
 from news_deframer.config import Config
-from news_deframer.database import postgres
+import news_deframer.postgres as postgres_module
 
 
 def make_config() -> Config:
@@ -57,14 +57,16 @@ def patch_connect(monkeypatch, cursor_stub):
     def fake_connect(*args, **kwargs):
         return conn
 
-    monkeypatch.setattr(postgres, "psycopg2", type("P", (), {"connect": fake_connect}))
+    monkeypatch.setattr(
+        postgres_module, "psycopg2", type("P", (), {"connect": fake_connect})
+    )
     return conn
 
 
 def test_begin_mine_update_returns_none(monkeypatch):
     cursor = CursorStub()
     patch_connect(monkeypatch, cursor)
-    repo = postgres.Postgres(make_config())
+    repo = postgres_module.Postgres(make_config())
 
     feed = repo.begin_mine_update(lock_duration=60)
 
@@ -78,7 +80,7 @@ def test_begin_mine_update_returns_feed(monkeypatch):
         fetchone_queue=[(feed_id, ["cat1", "cat2"], "EN", "https://feed.example")]
     )
     patch_connect(monkeypatch, cursor)
-    repo = postgres.Postgres(make_config())
+    repo = postgres_module.Postgres(make_config())
 
     feed = repo.begin_mine_update(lock_duration=30)
 
@@ -99,7 +101,7 @@ def test_fetch_pending_items(monkeypatch):
         ]
     )
     patch_connect(monkeypatch, cursor)
-    repo = postgres.Postgres(make_config())
+    repo = postgres_module.Postgres(make_config())
 
     items = repo.fetch_pending_items(feed_id=feed_id)
 

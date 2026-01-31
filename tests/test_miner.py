@@ -1,7 +1,7 @@
 from uuid import uuid4
 
 from news_deframer.config import Config
-from news_deframer.miner.miner import Miner, MiningTask
+from news_deframer.miner import Miner, MiningTask
 
 
 def make_config() -> Config:

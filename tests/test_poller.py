@@ -1,9 +1,9 @@
 from uuid import uuid4
 
 from news_deframer.config import Config, DEFAULT_LOCK_DURATION, POLLING_INTERVAL
-from news_deframer.database.postgres import Feed, Item
-from news_deframer.miner.miner import MiningTask
-from news_deframer.miner.poller import poll_feed, poll_next_feed
+from news_deframer.postgres import Feed, Item
+from news_deframer.miner import Miner, MiningTask
+from news_deframer.poller import poll_feed, poll_next_feed
 
 
 class DummyRepo:
@@ -37,11 +37,12 @@ class DummyRepo:
         pass
 
 
-class DummyMiner:
+class DummyMiner(Miner):
     def __init__(self):
-        self.tasks = []
+        super().__init__(make_config())
+        self.tasks: list[MiningTask] = []
 
-    def mine_item(self, task):
+    def mine_item(self, task: MiningTask) -> None:  # type: ignore[override]
         self.tasks.append(task)
 
 
@@ -75,7 +76,7 @@ def test_poll_next_feed_success_calls_end_update(monkeypatch):
             )
         )
 
-    monkeypatch.setattr("news_deframer.miner.poller.poll_feed", fake_poll_feed)
+    monkeypatch.setattr("news_deframer.poller.poll_feed", fake_poll_feed)
 
     assert poll_next_feed(make_config(), miner, repo) is True
     assert repo.end_calls == [(str(feed_id), None, POLLING_INTERVAL)]
@@ -89,7 +90,7 @@ def test_poll_next_feed_passes_errors(monkeypatch):
     def boom(feed, miner_obj, repo_obj):  # noqa: ARG001
         raise ValueError("fail")
 
-    monkeypatch.setattr("news_deframer.miner.poller.poll_feed", boom)
+    monkeypatch.setattr("news_deframer.poller.poll_feed", boom)
 
     assert poll_next_feed(make_config(), miner, repo) is True
     assert len(repo.end_calls) == 1
@@ -126,8 +127,11 @@ def test_poll_feed_returns_error(monkeypatch, caplog):
     item = Item(id=uuid4(), feed_id=feed.id)
     repo = DummyRepo(pending_items=[item])
 
-    class ExplodingMiner:
-        def mine_item(self, task):
+    class ExplodingMiner(Miner):
+        def __init__(self):
+            super().__init__(make_config())
+
+        def mine_item(self, task: MiningTask) -> None:  # type: ignore[override]
             raise RuntimeError("boom")
 
     miner = ExplodingMiner()

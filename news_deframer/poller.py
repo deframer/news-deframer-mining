@@ -13,8 +13,8 @@ from news_deframer.config import (
     POLLING_INTERVAL,
     Config,
 )
-from news_deframer.database.postgres import Feed, Item, Postgres
-from news_deframer.miner.miner import Miner, MiningTask
+from news_deframer.postgres import Feed, Item, Postgres
+from news_deframer.miner import Miner, MiningTask
 
 logger = logging.getLogger(__name__)
 
