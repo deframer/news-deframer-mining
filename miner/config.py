@@ -3,6 +3,13 @@ from dataclasses import dataclass
 
 from dotenv import load_dotenv
 
+# PollingInterval defines how often a single feed is data mined
+# If a feed was synced at T, it will be eligible again at T + PollingInterval.
+POLLING_INTERVAL = 600  # 10 minutes
+
+# IdleSleepTime defines how long the worker sleeps when no feeds are due for mining.
+IDLE_SLEEP_TIME = 10  # 10 seconds
+
 
 @dataclass
 class Config:
