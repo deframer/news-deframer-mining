@@ -17,9 +17,10 @@ from news_deframer.config import Config
 @dataclass
 class Feed:
     id: UUID
+    url: str
     categories: list[str] = field(default_factory=list)
     language: Optional[str] = None
-    url: Optional[str] = None
+    root_domain: Optional[str] = None
 
 
 @dataclass
@@ -48,7 +49,7 @@ class Postgres:
         """Attempt to lock the next feed ready for mining."""
         lock_seconds = max(int(lock_duration), 0)
         select_sql = """
-            SELECT fs.id, f.categories, f.language, f.url
+            SELECT fs.id, f.categories, f.language, f.url, f.root_domain
             FROM feed_schedules AS fs
             JOIN feeds AS f ON f.id = fs.id
             WHERE fs.next_mining_at IS NOT NULL
@@ -81,14 +82,18 @@ class Postgres:
                 language = row[2]
                 url = row[3]
                 cur.execute(update_sql, (lock_seconds, feed_id))
-                feed_url = str(url) if url is not None else None
+                if url is None:
+                    raise RuntimeError("Feed record missing URL")
+                feed_url = str(url)
+                root_domain = str(row[4]) if row[4] is not None else None
                 feed_label = feed_url or str(feed_id)
                 logger.debug("Locked feed %s for mining", feed_label)
                 return Feed(
                     id=feed_id,
+                    url=feed_url,
                     categories=list(categories),
                     language=_normalize_language_value(language),
-                    url=feed_url,
+                    root_domain=root_domain,
                 )
 
     def end_mine_update(

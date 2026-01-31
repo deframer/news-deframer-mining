@@ -25,6 +25,7 @@ class TrendDoc:
     categories: Sequence[str] | None = None
     noun_stems: Sequence[str] | None = None
     verb_stems: Sequence[str] | None = None
+    root_domain: str | None = None
 
 
 class DuckDBStore:
@@ -64,7 +65,8 @@ class DuckDBStore:
                 pub_date TIMESTAMP,
                 categories VARCHAR[],
                 noun_stems VARCHAR[],
-                verb_stems VARCHAR[]
+                verb_stems VARCHAR[],
+                root_domain VARCHAR
             )
             """
         )
@@ -107,6 +109,7 @@ class DuckDBStore:
                 list(doc.categories) if doc.categories else None,
                 list(doc.noun_stems) if doc.noun_stems else None,
                 list(doc.verb_stems) if doc.verb_stems else None,
+                doc.root_domain,
             )
             for doc in self._buffer
         ]
@@ -115,8 +118,8 @@ class DuckDBStore:
         self._conn.executemany(
             """
             INSERT OR REPLACE INTO trend_docs
-            (item_id, feed_id, language, pub_date, categories, noun_stems, verb_stems)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+            (item_id, feed_id, language, pub_date, categories, noun_stems, verb_stems, root_domain)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             """,
             prepared,
         )
