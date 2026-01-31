@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from datetime import datetime
 from typing import List, Tuple
 from uuid import uuid4
 
@@ -9,7 +10,12 @@ import news_deframer.postgres as postgres_module
 
 
 def make_config() -> Config:
-    return Config(dsn="postgres://local", log_level="INFO", log_database=False)
+    return Config(
+        dsn="postgres://local",
+        log_level="INFO",
+        log_database=False,
+        duck_db_file=":memory:",
+    )
 
 
 @dataclass
@@ -97,7 +103,15 @@ def test_fetch_pending_items(monkeypatch):
     feed_id = uuid4()
     cursor = CursorStub(
         fetchall_result=[
-            (item_id, feed_id, ["x"], "es", "title", "desc"),
+            (
+                item_id,
+                feed_id,
+                ["x"],
+                "es",
+                datetime(2024, 6, 1, 12, 0, 0),
+                "title",
+                "desc",
+            ),
         ]
     )
     patch_connect(monkeypatch, cursor)
@@ -110,5 +124,6 @@ def test_fetch_pending_items(monkeypatch):
     assert items[0].feed_id == feed_id
     assert items[0].categories == ["x"]
     assert items[0].language == "es"
+    assert items[0].pub_date == datetime(2024, 6, 1, 12, 0, 0)
     assert items[0].title == "title"
     assert items[0].description == "desc"

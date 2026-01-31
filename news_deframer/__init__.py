@@ -1,6 +1,6 @@
 """News Deframer Python package."""
 
 from . import cli, config, logger, miner, poller
-from . import postgres
+from . import duckdb_store, postgres
 
-__all__ = ["cli", "config", "logger", "miner", "poller", "postgres"]
+__all__ = ["cli", "config", "logger", "miner", "poller", "postgres", "duckdb_store"]

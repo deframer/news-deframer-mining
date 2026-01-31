@@ -5,9 +5,16 @@ description = "News Deframer Trend Mining Modules"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
+    "beautifulsoup4",
     "duckdb",
     "psycopg2-binary",
+    "pydantic-settings",
+    "pyarrow",
     "python-dotenv",
+    "spacy>=3.7.0,<3.9.0",
+    "en-core-web-md @ https://github.com/explosion/spacy-models/releases/download/en_core_web_md-3.7.1/en_core_web_md-3.7.1-py3-none-any.whl",
+    "de-core-news-md @ https://github.com/explosion/spacy-models/releases/download/de_core_news_md-3.7.0/de_core_news_md-3.7.0-py3-none-any.whl",
+    "fr-core-news-md @ https://github.com/explosion/spacy-models/releases/download/fr_core_news_md-3.7.0/fr_core_news_md-3.7.0-py3-none-any.whl",
 ]
 
 [project.scripts]

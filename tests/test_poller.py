@@ -1,6 +1,9 @@
+from datetime import datetime
+from typing import cast
 from uuid import uuid4
 
 from news_deframer.config import Config, DEFAULT_LOCK_DURATION, POLLING_INTERVAL
+from news_deframer.duckdb_store import DuckDBStore
 from news_deframer.postgres import Feed, Item
 from news_deframer.miner import Miner, MiningTask
 from news_deframer.poller import poll_feed, poll_next_feed
@@ -37,9 +40,15 @@ class DummyRepo:
         pass
 
 
+class StoreStub:
+    def insert_trend_docs(self, docs):  # noqa: D401 - simple stub
+        return None
+
+
 class DummyMiner(Miner):
     def __init__(self):
-        super().__init__(make_config())
+        self._store_stub = StoreStub()
+        super().__init__(make_config(), store=cast(DuckDBStore, self._store_stub))
         self.tasks: list[MiningTask] = []
 
     def mine_item(self, task: MiningTask) -> None:  # type: ignore[override]
@@ -47,7 +56,7 @@ class DummyMiner(Miner):
 
 
 def make_config() -> Config:
-    return Config(dsn="", log_level="INFO", log_database=False)
+    return Config(dsn="", log_level="INFO", log_database=False, duck_db_file=":memory:")
 
 
 def test_poll_next_feed_returns_false_when_no_feed():
@@ -73,6 +82,7 @@ def test_poll_next_feed_success_calls_end_update(monkeypatch):
                 categories=[],
                 title=None,
                 description=None,
+                pub_date=None,
             )
         )
 
@@ -111,7 +121,14 @@ def test_poll_next_feed_handles_begin_failure(caplog):
 def test_poll_feed_fetches_items():
     feed_id = uuid4()
     pending_items = [
-        Item(id=uuid4(), feed_id=feed_id, language="es", title="foo", description="bar")
+        Item(
+            id=uuid4(),
+            feed_id=feed_id,
+            language="es",
+            title="foo",
+            description="bar",
+            pub_date=datetime(2024, 1, 1, 0, 0, 0),
+        )
     ]
     repo = DummyRepo(pending_items=pending_items)
     miner = DummyMiner()
@@ -120,6 +137,7 @@ def test_poll_feed_fetches_items():
 
     assert repo.fetched_for == [str(feed_id)]
     assert len(miner.tasks) == 1
+    assert miner.tasks[0].pub_date == datetime(2024, 1, 1, 0, 0, 0)
 
 
 def test_poll_feed_returns_error(monkeypatch, caplog):
@@ -129,7 +147,7 @@ def test_poll_feed_returns_error(monkeypatch, caplog):
 
     class ExplodingMiner(Miner):
         def __init__(self):
-            super().__init__(make_config())
+            super().__init__(make_config(), store=cast(DuckDBStore, StoreStub()))
 
         def mine_item(self, task: MiningTask) -> None:  # type: ignore[override]
             raise RuntimeError("boom")

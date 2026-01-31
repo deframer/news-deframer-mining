@@ -8,6 +8,7 @@ from typing import Optional, Sequence
 
 from news_deframer import poller as poller_module
 from news_deframer.config import Config
+from news_deframer.duckdb_store import DuckDBStore
 from news_deframer.logger import configure_logging
 
 logger = logging.getLogger(__name__)
@@ -21,7 +22,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     configure_logging(config.log_level)
     logger.debug("Starting mining poller")
 
-    poller_module.poll(config)
+    with DuckDBStore(config.duck_db_file) as store:
+        poller_module.poll(config, store=store)
     return 0
 
 

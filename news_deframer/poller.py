@@ -15,16 +15,22 @@ from news_deframer.config import (
 )
 from news_deframer.postgres import Feed, Item, Postgres
 from news_deframer.miner import Miner, MiningTask
+from news_deframer.duckdb_store import DuckDBStore
 
 logger = logging.getLogger(__name__)
 
 
-def poll(config: Config) -> None:
+def poll(config: Config, store: DuckDBStore | None = None) -> None:
     logger.info("Miner poll started. Press Ctrl+C to exit.")
     logger.debug("Loaded configuration: log level=%s", config.log_level)
 
     repository = Postgres(config)
-    miner = Miner(config)
+    owns_store = False
+    duck_store = store
+    if duck_store is None:
+        duck_store = DuckDBStore(config.duck_db_file)
+        owns_store = True
+    miner = Miner(config, store=duck_store)
 
     try:
         while True:
@@ -36,6 +42,9 @@ def poll(config: Config) -> None:
             time.sleep(IDLE_SLEEP_TIME)
     except KeyboardInterrupt:
         logger.info("Poll interrupted. Exiting.")
+    finally:
+        if owns_store and duck_store is not None:
+            duck_store.close()
 
 
 def poll_next_feed(
@@ -127,4 +136,5 @@ def _build_task(feed: Feed, item: Item) -> MiningTask:
         categories=categories,
         title=item.title,
         description=item.description,
+        pub_date=item.pub_date,
     )
