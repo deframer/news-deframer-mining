@@ -9,6 +9,8 @@ from typing import Iterable, Sequence
 
 import duckdb
 
+from news_deframer.config import TREND_DOC_BUFFER_SIZE
+
 _MEMORY_ALIASES = frozenset({":memory", ":memory:"})
 
 
@@ -30,6 +32,8 @@ class DuckDBStore:
 
     def __init__(self, db_path: str):
         self._db_path: Path | None = None
+        self._buffer: list[TrendDoc] = []
+        self._buffer_limit = max(1, TREND_DOC_BUFFER_SIZE)
         normalized_target = db_path.strip()
         database = _normalize_database_target(normalized_target)
 
@@ -68,6 +72,29 @@ class DuckDBStore:
     def insert_trend_docs(self, docs: Iterable[TrendDoc]) -> None:
         """Bulk insert or replace trend documents."""
 
+        pending = False
+        for doc in docs:
+            pending = True
+            self._buffer.append(doc)
+            if len(self._buffer) >= self._buffer_limit:
+                self._flush_buffer()
+
+        if not pending:
+            return
+
+    def close(self) -> None:
+        self.flush()
+        self._conn.close()
+
+    def flush(self) -> None:
+        """Force flushing any buffered trend documents to DuckDB."""
+
+        self._flush_buffer()
+
+    def _flush_buffer(self) -> None:
+        if not self._buffer:
+            return
+
         prepared = [
             (
                 doc.item_id,
@@ -78,11 +105,9 @@ class DuckDBStore:
                 list(doc.noun_stems) if doc.noun_stems else None,
                 list(doc.verb_stems) if doc.verb_stems else None,
             )
-            for doc in docs
+            for doc in self._buffer
         ]
-
-        if not prepared:
-            return
+        self._buffer.clear()
 
         self._conn.executemany(
             """
@@ -92,9 +117,6 @@ class DuckDBStore:
             """,
             prepared,
         )
-
-    def close(self) -> None:
-        self._conn.close()
 
 
 __all__ = ["DuckDBStore", "TrendDoc"]

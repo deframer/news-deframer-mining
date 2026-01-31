@@ -13,6 +13,9 @@ IDLE_SLEEP_TIME = 10  # 10 seconds
 # Default lock duration for a miner poll
 DEFAULT_LOCK_DURATION = 5 * 60  # 5 minutes
 
+# Number of trend documents buffered in memory before flushing to DuckDB
+TREND_DOC_BUFFER_SIZE = 32
+
 
 @dataclass
 class Config:

@@ -5,11 +5,11 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime
 import logging
-import re
-from typing import Optional, Sequence
+from typing import Optional
 
 from news_deframer.config import Config
 from news_deframer.duckdb_store import DuckDBStore, TrendDoc
+from news_deframer.nlp import extract_stems, sanitize_text
 
 
 logger = logging.getLogger(__name__)
@@ -41,6 +41,9 @@ class Miner:
         Currently this is a placeholder that simply logs the provided task.
         """
 
+        task.title = sanitize_text(task.title)
+        task.description = sanitize_text(task.description)
+
         self._logger.info(
             "Processed feed item",
             extra={
@@ -55,14 +58,16 @@ class Miner:
             },
         )
 
-        self._persist_trend_doc(task)
+        title_text = task.title or ""
+        description_text = task.description or ""
+        content = f"{title_text}{' ' if title_text else ''}{description_text}"
 
-    def _persist_trend_doc(self, task: MiningTask) -> None:
-        if not self._store:
-            return
-
-        noun_stems = _tokenize_words(task.title)
-        verb_stems = _tokenize_words(task.description)
+        noun_stems, verb_stems = extract_stems(
+            content,
+            task.language,
+            title=task.title,
+            description=task.description,
+        )
 
         doc = TrendDoc(
             item_id=task.item_id,
@@ -70,18 +75,14 @@ class Miner:
             language=task.language,
             pub_date=task.pub_date,
             categories=tuple(task.categories),
-            # fake
-            noun_stems=noun_stems if noun_stems else None,
-            # fake
-            verb_stems=verb_stems if verb_stems else None,
+            noun_stems=noun_stems,
+            verb_stems=verb_stems,
         )
+
+        self._persist_trend_doc(doc)
+
+    def _persist_trend_doc(self, doc: TrendDoc) -> None:
+        if not self._store:
+            return
+
         self._store.insert_trend_docs([doc])
-
-
-_WORD_RE = re.compile(r"[A-Za-z]+")
-
-
-def _tokenize_words(value: Optional[str]) -> Sequence[str]:
-    if not value:
-        return []
-    return [match.group(0).lower() for match in _WORD_RE.finditer(value)]
