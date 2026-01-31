@@ -17,7 +17,6 @@ def test_store_roundtrip_records_persist(tmp_path):
         categories=("economy", "policy"),
         noun_stems=("economy",),
         verb_stems=("grow",),
-        root_domain="news.example",
     )
 
     store.insert_trend_docs([doc])
@@ -28,7 +27,7 @@ def test_store_roundtrip_records_persist(tmp_path):
 
     with duckdb.connect(str(db_path)) as conn:
         rows = conn.execute(
-            "SELECT item_id, feed_id, language, pub_date, categories, noun_stems, verb_stems, root_domain FROM trend_docs"
+            "SELECT item_id, feed_id, language, pub_date, categories, noun_stems, verb_stems FROM trend_docs"
         ).fetchall()
 
     expected_categories = list(doc.categories) if doc.categories else None
@@ -43,7 +42,6 @@ def test_store_roundtrip_records_persist(tmp_path):
             expected_categories,
             expected_nouns,
             expected_verbs,
-            doc.root_domain,
         )
     ]
 
