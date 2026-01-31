@@ -43,12 +43,14 @@ def poll(config: Config, store: DuckDBStore | None = None) -> None:
 
             logger.info("Sleeping... duration=%s", IDLE_SLEEP_TIME)
             time.sleep(IDLE_SLEEP_TIME)
+            if duck_store is not None and duck_store.flush():
+                logger.info("Flushed DuckDB buffer after idle period")
     except KeyboardInterrupt:
         logger.info("Poll interrupted. Exiting.")
     finally:
         _restore_sigterm_handler(previous_sigterm)
-        if duck_store is not None:
-            duck_store.flush()
+        if duck_store is not None and duck_store.flush():
+            logger.info("Flushed DuckDB buffer before shutdown")
         if owns_store and duck_store is not None:
             duck_store.close()
 

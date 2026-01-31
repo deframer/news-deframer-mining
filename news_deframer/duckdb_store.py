@@ -86,14 +86,17 @@ class DuckDBStore:
         self.flush()
         self._conn.close()
 
-    def flush(self) -> None:
-        """Force flushing any buffered trend documents to DuckDB."""
+    def flush(self) -> bool:
+        """Force flushing any buffered trend documents to DuckDB.
 
-        self._flush_buffer()
+        Returns True if data was persisted, False otherwise.
+        """
 
-    def _flush_buffer(self) -> None:
+        return self._flush_buffer()
+
+    def _flush_buffer(self) -> bool:
         if not self._buffer:
-            return
+            return False
 
         prepared = [
             (
@@ -117,6 +120,7 @@ class DuckDBStore:
             """,
             prepared,
         )
+        return True
 
 
 __all__ = ["DuckDBStore", "TrendDoc"]

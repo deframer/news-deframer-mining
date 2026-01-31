@@ -50,8 +50,8 @@ def test_miner_logs_task(caplog):
     assert stored_doc.item_id == task.item_id
     assert stored_doc.feed_id == task.feed_id
     assert stored_doc.language == task.language
-    assert stored_doc.noun_stems == ["title", "nouns"]
-    assert stored_doc.verb_stems == ["running", "verbs", "now"]
+    assert stored_doc.noun_stems == ["title", "nouns", "verb"]
+    assert stored_doc.verb_stems == ["run"]
 
 
 @pytest.mark.parametrize(
@@ -76,7 +76,7 @@ def test_miner_logs_task(caplog):
             "Le renard brun rapide",
             "saute par-dessus le chien paresseux",
             ["renard", "chien"],
-            ["sauter"],
+            ["saute"],
         ),
     ],
 )

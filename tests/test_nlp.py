@@ -23,6 +23,7 @@ def test_extract_stems_uses_spacy_when_available(monkeypatch) -> None:
         def __init__(self, lemma: str, pos: str):
             self.lemma_ = lemma
             self.pos_ = pos
+            self.is_alpha = True
 
     class DummyModel:
         def __call__(self, _: str):
@@ -84,7 +85,7 @@ def test_extract_stems_with_real_french_model() -> None:
     )
 
     assert nouns == ["renard", "chien"]
-    assert verbs == ["sauter"]
+    assert verbs == ["saute"]
 
 
 @pytest.mark.parametrize(

@@ -40,6 +40,7 @@ def extract_stems(
         for token in doc
         if token.pos_ in {"NOUN", "PROPN"}
         and token.lemma_
+        and token.is_alpha
         and not _is_stop_word(token.lemma_, language)
     ]
     verb_stems = [
@@ -47,6 +48,7 @@ def extract_stems(
         for token in doc
         if token.pos_ == "VERB"
         and token.lemma_
+        and token.is_alpha
         and not _is_stop_word(token.lemma_, language)
     ]
 

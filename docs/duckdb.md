@@ -54,6 +54,7 @@ If your config points at a different file, substitute the path or pass `DUCK_DB_
 
     ```sql
     SELECT * FROM trend_docs LIMIT 20;
+    SELECT noun_stems, verb_stems, categories, pub_date, language FROM trend_docs LIMIT 10;
     ```
 
 4. Press `Shift+Enter` (or hit the ▶ Run button). The results grid appears below the cell; you can sort, filter, or export directly from the UI.
