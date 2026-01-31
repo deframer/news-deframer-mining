@@ -14,6 +14,7 @@ from news_deframer.config import (
     Config,
 )
 from news_deframer.database.postgres import Feed, Item, Postgres
+from news_deframer.miner.miner import Miner, MiningTask
 
 logger = logging.getLogger(__name__)
 
@@ -23,10 +24,11 @@ def poll(config: Config) -> None:
     logger.debug("Loaded configuration: log level=%s", config.log_level)
 
     repository = Postgres(config)
+    miner = Miner(config)
 
     try:
         while True:
-            if poll_next_feed(config, repository):
+            if poll_next_feed(config, miner, repository):
                 logger.info("A feed was mined")
                 continue
 
@@ -36,7 +38,9 @@ def poll(config: Config) -> None:
         logger.info("Poll interrupted. Exiting.")
 
 
-def poll_next_feed(config: Config, repository: Optional[Any] = None) -> bool:
+def poll_next_feed(
+    config: Config, miner: Miner, repository: Optional[Any] = None
+) -> bool:
     repo = repository or Postgres(config)
     logger.info("poll_next_feed")
 
@@ -51,7 +55,7 @@ def poll_next_feed(config: Config, repository: Optional[Any] = None) -> bool:
 
     poll_error: Exception | None = None
     try:
-        poll_feed(feed, repo)
+        poll_feed(feed, miner, repo)
     except Exception as exc:  # pragma: no cover - mining failure path
         poll_error = exc
         logger.error(
@@ -70,7 +74,7 @@ def poll_next_feed(config: Config, repository: Optional[Any] = None) -> bool:
     return True
 
 
-def poll_feed(feed: Feed, repository: Any) -> Optional[Exception]:
+def poll_feed(feed: Feed, miner: Miner, repository: Any) -> Optional[Exception]:
     items = repository.fetch_pending_items(feed.id, feed.url)
     items = [item for item in items if item.feed_id == feed.id]
     feed_label = feed.url or str(feed.id)
@@ -82,7 +86,8 @@ def poll_feed(feed: Feed, repository: Any) -> Optional[Exception]:
     processed_ids: list[UUID] = []
     for item in items:
         try:
-            poll_item(feed, item)
+            task = _build_task(feed, item)
+            miner.mine_item(task)
         except Exception as exc:  # pragma: no cover - per-item failure
             logger.error(
                 "Failed to process item",
@@ -105,26 +110,21 @@ def poll_feed(feed: Feed, repository: Any) -> Optional[Exception]:
     return None
 
 
-def poll_item(feed: Feed, item: Item) -> None:
+def _build_task(feed: Feed, item: Item) -> MiningTask:
     language = item.language or feed.language or "en"
     if language == "en" and not (item.language or feed.language):
         logger.warning(
             "Missing language metadata; falling back to 'en'",
-            extra={
-                "feed_url": feed.url,
-                "item_id": str(item.id),
-            },
+            extra={"feed_url": feed.url, "item_id": str(item.id)},
         )
 
     categories = sorted({*feed.categories, *item.categories})
-    logger.info(
-        "Processed feed item",
-        extra={
-            "feed_url": feed.url,
-            "item_id": str(item.id),
-            "language": language,
-            "categories": categories,
-            "title": item.title,
-            "description": item.description,
-        },
+    return MiningTask(
+        feed_id=str(feed.id),
+        feed_url=feed.url,
+        item_id=str(item.id),
+        language=language,
+        categories=categories,
+        title=item.title,
+        description=item.description,
     )
