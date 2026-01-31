@@ -45,20 +45,20 @@ class Miner:
         task.title = sanitize_text(task.title)
         task.description = sanitize_text(task.description)
 
-        self._logger.info(
-            "Processed feed item",
-            extra={
-                "feed_id": task.feed_id,
-                "feed_url": task.feed_url,
-                "root_domain": task.root_domain,
-                "item_id": task.item_id,
-                "language": task.language,
-                "categories": task.categories,
-                "title": task.title,
-                "description": task.description,
-                "pub_date": task.pub_date.isoformat() if task.pub_date else None,
-            },
-        )
+        # self._logger.info(
+        #     "Processed feed item",
+        #     extra={
+        #         "feed_id": task.feed_id,
+        #         "feed_url": task.feed_url,
+        #         "root_domain": task.root_domain,
+        #         "item_id": task.item_id,
+        #         "language": task.language,
+        #         "categories": task.categories,
+        #         "title": task.title,
+        #         "description": task.description,
+        #         "pub_date": task.pub_date.isoformat() if task.pub_date else None,
+        #     },
+        # )
 
         title_text = task.title or ""
         description_text = task.description or ""
