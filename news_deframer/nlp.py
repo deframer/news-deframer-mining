@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Optional, Sequence
-import re
 from bs4 import BeautifulSoup
 
 try:  # pragma: no cover - optional dependency
@@ -24,50 +23,34 @@ def extract_stems(
     title: Optional[str] = None,
     description: Optional[str] = None,
 ) -> tuple[Sequence[str], Sequence[str]]:
-    """Return noun and verb stems for ``content``.
-
-    Attempts to use spaCy when available; otherwise falls back to a simple
-    regex-based tokenizer that preserves the previous behavior used in tests.
-    """
+    """Return noun and verb lemmas for ``content`` using spaCy models."""
 
     normalized = content.strip()
-    if normalized:
-        nlp = _get_spacy_model(language)
-        if nlp is not None:
-            try:
-                doc = nlp(normalized)
-            except Exception:  # pragma: no cover - spaCy runtime failure
-                doc = None
-            if doc is not None:
-                noun_stems = [
-                    token.lemma_.lower()
-                    for token in doc
-                    if token.pos_ in {"NOUN", "PROPN"} and token.lemma_
-                ]
-                verb_stems = [
-                    token.lemma_.lower()
-                    for token in doc
-                    if token.pos_ == "VERB" and token.lemma_
-                ]
-                if noun_stems or verb_stems:
-                    return noun_stems, verb_stems
+    if not normalized:
+        return [], []
 
-    return _fallback_tokens(title, description)
+    nlp = _get_spacy_model(language)
+    try:
+        doc = nlp(normalized)
+    except Exception as exc:  # pragma: no cover - spaCy runtime failure
+        raise RuntimeError("Failed to process text with spaCy model") from exc
 
+    noun_stems = [
+        token.lemma_.lower()
+        for token in doc
+        if token.pos_ in {"NOUN", "PROPN"}
+        and token.lemma_
+        and not _is_stop_word(token.lemma_, language)
+    ]
+    verb_stems = [
+        token.lemma_.lower()
+        for token in doc
+        if token.pos_ == "VERB"
+        and token.lemma_
+        and not _is_stop_word(token.lemma_, language)
+    ]
 
-def _fallback_tokens(
-    title: Optional[str], description: Optional[str]
-) -> tuple[Sequence[str], Sequence[str]]:
-    return _tokenize_words(title), _tokenize_words(description)
-
-
-_WORD_RE = re.compile(r"[A-Za-z]+")
-
-
-def _tokenize_words(value: Optional[str]) -> Sequence[str]:
-    if not value:
-        return []
-    return [match.group(0).lower() for match in _WORD_RE.finditer(value)]
+    return noun_stems, verb_stems
 
 
 def sanitize_text(value: Optional[str]) -> Optional[str]:
@@ -90,12 +73,13 @@ _SPACY_LANGUAGE_MODELS = {
     "ru": "ru_core_news_sm",
 }
 _FALLBACK_SPACY_MODEL = "xx_ent_wiki_sm"
-_NLP_CACHE: dict[str, SpacyLanguage | None] = {}
+_NLP_CACHE: dict[str, SpacyLanguage] = {}
+_STOPWORD_CACHE: dict[str, frozenset[str]] = {}
 
 
-def _get_spacy_model(language: str) -> SpacyLanguage | None:
+def _get_spacy_model(language: str) -> SpacyLanguage:
     if spacy is None:
-        return None
+        raise RuntimeError("spaCy is required but not installed")
 
     lang_code = (language or "").split("-")[0].lower()
     candidates: list[str] = []
@@ -109,18 +93,46 @@ def _get_spacy_model(language: str) -> SpacyLanguage | None:
 
     for name in candidates:
         if name in _NLP_CACHE:
-            cached = _NLP_CACHE[name]
-            if cached is not None:
-                return cached
-            continue
+            return _NLP_CACHE[name]
 
         try:
-            nlp = spacy.load(name, disable=("ner",))
-        except Exception:  # pragma: no cover - propagate failure gracefully
-            _NLP_CACHE[name] = None
-            continue
+            model = spacy.load(name, disable=("ner",))
+        except Exception as exc:  # pragma: no cover - propagate failure gracefully
+            raise RuntimeError(f"Failed to load spaCy model '{name}'") from exc
 
-        _NLP_CACHE[name] = nlp
-        return nlp
+        _NLP_CACHE[name] = model
+        return model
 
-    return None
+    raise RuntimeError(f"No spaCy model available for language '{language}'")
+
+
+def _get_stopwords(language: str) -> frozenset[str]:
+    if spacy is None:
+        raise RuntimeError("spaCy is required but not installed")
+
+    lang_code = (language or "").split("-")[0].lower()
+    if not lang_code:
+        raise RuntimeError("Language code is required for stopword handling")
+
+    cached = _STOPWORD_CACHE.get(lang_code)
+    if cached is not None:
+        return cached
+
+    util = getattr(spacy, "util", None)
+    if util is None:
+        raise RuntimeError("spaCy util module unavailable")
+
+    try:
+        lang_class = util.get_lang_class(lang_code)
+    except (KeyError, AttributeError) as exc:
+        raise RuntimeError(
+            f"No spaCy stopword list available for language '{language}'"
+        ) from exc
+
+    stopwords = frozenset(word.lower() for word in lang_class.Defaults.stop_words)
+    _STOPWORD_CACHE[lang_code] = stopwords
+    return stopwords
+
+
+def _is_stop_word(value: str, language: str) -> bool:
+    return value.lower() in _get_stopwords(language)
