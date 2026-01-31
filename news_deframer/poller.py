@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import logging
+import signal
 import time
-from typing import Any, Optional
+from types import FrameType
+from typing import Any, Optional, cast
 from uuid import UUID
 
 from news_deframer.config import (
@@ -15,17 +17,24 @@ from news_deframer.config import (
 )
 from news_deframer.postgres import Feed, Item, Postgres
 from news_deframer.miner import Miner, MiningTask
+from news_deframer.duckdb_store import DuckDBStore
 
 logger = logging.getLogger(__name__)
 
 
-def poll(config: Config) -> None:
+def poll(config: Config, store: DuckDBStore | None = None) -> None:
     logger.info("Miner poll started. Press Ctrl+C to exit.")
     logger.debug("Loaded configuration: log level=%s", config.log_level)
 
     repository = Postgres(config)
-    miner = Miner(config)
+    owns_store = False
+    duck_store = store
+    if duck_store is None:
+        duck_store = DuckDBStore(config.duck_db_file)
+        owns_store = True
+    miner = Miner(config, store=duck_store)
 
+    previous_sigterm = _install_sigterm_handler()
     try:
         while True:
             if poll_next_feed(config, miner, repository):
@@ -34,8 +43,16 @@ def poll(config: Config) -> None:
 
             logger.info("Sleeping... duration=%s", IDLE_SLEEP_TIME)
             time.sleep(IDLE_SLEEP_TIME)
+            if duck_store is not None and duck_store.flush():
+                logger.info("Flushed DuckDB buffer after idle period")
     except KeyboardInterrupt:
         logger.info("Poll interrupted. Exiting.")
+    finally:
+        _restore_sigterm_handler(previous_sigterm)
+        if duck_store is not None and duck_store.flush():
+            logger.info("Flushed DuckDB buffer before shutdown")
+        if owns_store and duck_store is not None:
+            duck_store.close()
 
 
 def poll_next_feed(
@@ -110,6 +127,30 @@ def poll_feed(feed: Feed, miner: Miner, repository: Any) -> Optional[Exception]:
     return None
 
 
+def _install_sigterm_handler() -> signal.Handlers | None:
+    if not hasattr(signal, "SIGTERM"):
+        return None
+
+    previous = signal.getsignal(signal.SIGTERM)
+
+    def _handle_sigterm(signum: int, _: Optional[FrameType]) -> None:
+        try:
+            signal_name = signal.Signals(signum).name
+        except ValueError:  # pragma: no cover - unexpected signal value
+            signal_name = str(signum)
+        logger.info("Received %s; initiating graceful shutdown", signal_name)
+        raise KeyboardInterrupt
+
+    signal.signal(signal.SIGTERM, _handle_sigterm)
+    return cast(signal.Handlers, previous)
+
+
+def _restore_sigterm_handler(previous: signal.Handlers | None) -> None:
+    if previous is None or not hasattr(signal, "SIGTERM"):
+        return
+    signal.signal(signal.SIGTERM, previous)
+
+
 def _build_task(feed: Feed, item: Item) -> MiningTask:
     language = item.language or feed.language or "en"
     if language == "en" and not (item.language or feed.language):
@@ -127,4 +168,5 @@ def _build_task(feed: Feed, item: Item) -> MiningTask:
         categories=categories,
         title=item.title,
         description=item.description,
+        pub_date=item.pub_date,
     )

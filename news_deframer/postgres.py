@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass, field
+from datetime import datetime
 from typing import Optional
 from uuid import UUID
 
@@ -27,6 +28,7 @@ class Item:
     feed_id: UUID
     categories: list[str] = field(default_factory=list)
     language: Optional[str] = None
+    pub_date: datetime | None = None
     title: Optional[str] = None
     description: Optional[str] = None
 
@@ -154,6 +156,7 @@ class Postgres:
                 feed_id,
                 categories,
                 language,
+                pub_date,
                 think_result ->> 'title_original' AS title,
                 think_result ->> 'description_original' AS description
             FROM items
@@ -173,8 +176,9 @@ class Postgres:
                         feed_id=row[1],
                         categories=list(row[2] or []),
                         language=_normalize_language_value(row[3]),
-                        title=row[4],
-                        description=row[5],
+                        pub_date=row[4],
+                        title=row[5],
+                        description=row[6],
                     )
                     for row in rows
                 ]
