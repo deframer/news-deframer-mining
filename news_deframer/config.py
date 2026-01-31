@@ -10,6 +10,9 @@ POLLING_INTERVAL = 600  # 10 minutes
 # IdleSleepTime defines how long the worker sleeps when no feeds are due for mining.
 IDLE_SLEEP_TIME = 10  # 10 seconds
 
+# Default lock duration for a miner poll
+DEFAULT_LOCK_DURATION = 5 * 60  # 5 minutes
+
 
 @dataclass
 class Config:
