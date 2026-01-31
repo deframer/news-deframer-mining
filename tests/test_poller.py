@@ -138,7 +138,7 @@ def test_poll_feed_fetches_items():
     assert repo.fetched_for == [str(feed_id)]
     assert len(miner.tasks) == 1
     assert miner.tasks[0].pub_date == datetime(2024, 1, 1, 0, 0, 0)
-    assert miner.tasks[0].categories == ["feed"]
+    assert miner.tasks[0].categories == []
     assert miner.tasks[0].root_domain == "feed"
 
 
@@ -152,7 +152,7 @@ def test_poll_feed_uses_feed_root_domain():
     poll_feed(feed, miner, repo)
 
     assert len(miner.tasks) == 1
-    assert "feed.example" in miner.tasks[0].categories
+    assert miner.tasks[0].categories == []
     assert miner.tasks[0].root_domain == "feed.example"
 
 

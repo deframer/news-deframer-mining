@@ -160,15 +160,12 @@ def _build_task(feed: Feed, item: Item) -> MiningTask:
             extra={"feed_url": feed.url, "item_id": str(item.id)},
         )
 
-    categories_set = {*feed.categories, *item.categories}
+    categories = sorted({*feed.categories, *item.categories})
     domain = feed.root_domain or get_root_domain(feed.url)
-    if domain:
-        categories_set.add(domain)
-    categories = sorted(categories_set)
     return MiningTask(
         feed_id=str(feed.id),
         feed_url=feed.url,
-        root_domain=domain or feed.root_domain,
+        root_domain=domain,
         item_id=str(item.id),
         language=language,
         categories=categories,

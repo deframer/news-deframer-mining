@@ -79,6 +79,7 @@ class Miner:
             categories=tuple(task.categories),
             noun_stems=noun_stems,
             verb_stems=verb_stems,
+            root_domain=task.root_domain,
         )
 
         self._persist_trend_doc(doc)
