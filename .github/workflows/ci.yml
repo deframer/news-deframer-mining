@@ -29,11 +29,17 @@ jobs:
           --health-retries 5
 
     steps:
+      - name: Install System Dependencies
+        run: |
+          apt-get update && apt-get install -y git make bash postgresql-client
+
       - name: Checkout code
         uses: actions/checkout@v4
 
       - name: Install uv
         uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
 
       - name: Set up Python
         uses: actions/setup-python@v5
