@@ -2,6 +2,6 @@
 
 from news_deframer.config import Config
 
-from .miner import poll
+from .poller import poll
 
 __all__ = ["Config", "poll"]

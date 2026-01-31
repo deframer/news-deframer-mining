@@ -8,7 +8,7 @@ from typing import Callable, Optional, Sequence
 
 from news_deframer.config import Config
 from news_deframer.logger import configure_logging
-from news_deframer import miner as miner_module
+from news_deframer.miner import poller as poller_module
 
 logger = logging.getLogger(__name__)
 
@@ -29,7 +29,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 def dispatch(command: str, config: Config) -> None:
     commands: dict[str, Callable[[Config], None]] = {
-        "poll": miner_module.poll,
+        "poll": poller_module.poll,
     }
 
     try:

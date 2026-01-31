@@ -1,7 +1,7 @@
 from uuid import uuid4
 
 from news_deframer.config import Config, DEFAULT_LOCK_DURATION, POLLING_INTERVAL
-from news_deframer.miner.miner import mine_feed, mine_item, mine_next_feed
+from news_deframer.miner.poller import poll_feed, poll_item, poll_next_feed
 from news_deframer.database.postgres import Feed, Item
 
 
@@ -41,14 +41,14 @@ def make_config() -> Config:
     return Config(dsn="", log_level="INFO", log_database=False)
 
 
-def test_mine_next_feed_returns_false_when_no_feed():
+def test_poll_next_feed_returns_false_when_no_feed():
     repo = DummyRepo(feed=None)
-    assert mine_next_feed(make_config(), repo) is False
+    assert poll_next_feed(make_config(), repo) is False
     assert repo.lock_duration == DEFAULT_LOCK_DURATION
     assert repo.end_calls == []
 
 
-def test_mine_next_feed_success_calls_end_update(monkeypatch):
+def test_poll_next_feed_success_calls_end_update(monkeypatch):
     feed_id = uuid4()
     repo = DummyRepo(feed=Feed(id=feed_id))
 
@@ -57,23 +57,23 @@ def test_mine_next_feed_success_calls_end_update(monkeypatch):
     def fake_mine(feed, repository):
         called["feed"] = feed
 
-    monkeypatch.setattr("news_deframer.miner.miner.mine_feed", fake_mine)
+    monkeypatch.setattr("news_deframer.miner.poller.poll_feed", fake_mine)
 
-    assert mine_next_feed(make_config(), repo) is True
+    assert poll_next_feed(make_config(), repo) is True
     assert called["feed"].id == feed_id
     assert repo.end_calls == [(str(feed_id), None, POLLING_INTERVAL)]
 
 
-def test_mine_next_feed_passes_errors(monkeypatch):
+def test_poll_next_feed_passes_errors(monkeypatch):
     feed_id = uuid4()
     repo = DummyRepo(feed=Feed(id=feed_id))
 
     def boom(feed, repository):  # noqa: ARG001 - required by signature
         raise ValueError("fail")
 
-    monkeypatch.setattr("news_deframer.miner.miner.mine_feed", boom)
+    monkeypatch.setattr("news_deframer.miner.poller.poll_feed", boom)
 
-    assert mine_next_feed(make_config(), repo) is True
+    assert poll_next_feed(make_config(), repo) is True
     assert len(repo.end_calls) == 1
     feed_id_value, err, retry = repo.end_calls[0]
     assert feed_id_value == str(feed_id)
@@ -81,14 +81,14 @@ def test_mine_next_feed_passes_errors(monkeypatch):
     assert retry == POLLING_INTERVAL
 
 
-def test_mine_next_feed_handles_begin_failure(caplog):
+def test_poll_next_feed_handles_begin_failure(caplog):
     repo = DummyRepo(feed=None, fail_begin=True)
-    assert mine_next_feed(make_config(), repo) is False
+    assert poll_next_feed(make_config(), repo) is False
     assert repo.end_calls == []
     assert any("Failed to query next feed" in msg for msg in caplog.text.splitlines())
 
 
-def test_mine_feed_fetches_items(monkeypatch):
+def test_poll_feed_fetches_items(monkeypatch):
     feed_id = uuid4()
     pending_items = [
         Item(id=uuid4(), feed_id=feed_id, language="es", title="foo", description="bar")
@@ -99,15 +99,15 @@ def test_mine_feed_fetches_items(monkeypatch):
     def fake_mine_item(feed, item):
         calls.append((feed.id, item.id))
 
-    monkeypatch.setattr("news_deframer.miner.miner.mine_item", fake_mine_item)
+    monkeypatch.setattr("news_deframer.miner.poller.poll_item", fake_mine_item)
 
-    mine_feed(Feed(id=feed_id), repo)
+    poll_feed(Feed(id=feed_id), repo)
     assert repo.fetched_for == [str(feed_id)]
     assert len(calls) == 1
     assert repo.marked == []
 
 
-def test_mine_feed_returns_error(monkeypatch, caplog):
+def test_poll_feed_returns_error(monkeypatch, caplog):
     feed = Feed(id=uuid4(), url="https://feed")
     item = Item(id=uuid4(), feed_id=feed.id)
     repo = DummyRepo(pending_items=[item])
@@ -115,17 +115,17 @@ def test_mine_feed_returns_error(monkeypatch, caplog):
     def boom(feed, item):  # noqa: ARG001
         raise RuntimeError("boom")
 
-    monkeypatch.setattr("news_deframer.miner.miner.mine_item", boom)
+    monkeypatch.setattr("news_deframer.miner.poller.poll_item", boom)
 
     with caplog.at_level("ERROR"):
-        error = mine_feed(feed, repo)
+        error = poll_feed(feed, repo)
 
     assert isinstance(error, RuntimeError)
     assert any("Failed to process item" in record.message for record in caplog.records)
     assert repo.marked == []
 
 
-def test_mine_item_logs(caplog):
+def test_poll_item_logs(caplog):
     feed = Feed(id=uuid4(), categories=["feed-cat"], language="en", url="https://feed")
     item = Item(
         id=uuid4(),
@@ -136,7 +136,7 @@ def test_mine_item_logs(caplog):
         description="Body",
     )
     with caplog.at_level("INFO"):
-        mine_item(feed, item)
+        poll_item(feed, item)
     assert any(record.message == "Processed feed item" for record in caplog.records)
     assert any(
         "categories" in record.__dict__
@@ -146,11 +146,11 @@ def test_mine_item_logs(caplog):
     assert any(getattr(record, "language", None) == "es" for record in caplog.records)
 
 
-def test_mine_item_language_fallback_warns(caplog):
+def test_poll_item_language_fallback_warns(caplog):
     feed = Feed(id=uuid4(), url="https://feed")
     item = Item(id=uuid4(), feed_id=feed.id)
     with caplog.at_level("WARNING"):
-        mine_item(feed, item)
+        poll_item(feed, item)
     assert any("falling back" in record.message.lower() for record in caplog.records)
     assert any(
         getattr(record, "feed_url", None) == "https://feed" for record in caplog.records
