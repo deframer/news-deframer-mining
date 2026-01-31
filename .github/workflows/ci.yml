@@ -13,25 +13,25 @@ jobs:
   test:
     runs-on: ubuntu-latest
     container: debian:trixie
-    env:
-      PGPASSWORD: deframer
-    services:
-      postgres:
-        image: postgres:17
-        env:
-          POSTGRES_USER: deframer
-          POSTGRES_PASSWORD: ${{ env.PGPASSWORD }}
-          POSTGRES_DB: deframer
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
+    # env:
+    #   PGPASSWORD: deframer
+    # services:
+    #   postgres:
+    #     image: postgres:17
+    #     env:
+    #       POSTGRES_USER: deframer
+    #       POSTGRES_PASSWORD: ${{ env.PGPASSWORD }}
+    #       POSTGRES_DB: deframer
+    #     options: >-
+    #       --health-cmd pg_isready
+    #       --health-interval 10s
+    #       --health-timeout 5s
+    #       --health-retries 5
 
     steps:
-      - name: Install System Dependencies
-        run: |
-          apt-get update && apt-get install -y git make bash postgresql-client
+      # - name: Install System Dependencies
+      #   run: |
+      #     apt-get update && apt-get install -y git make bash postgresql-client
 
       - name: Checkout code
         uses: actions/checkout@v6
