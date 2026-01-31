@@ -1,0 +1,17 @@
+services:
+  miner:
+    build:
+      context: .
+      dockerfile: build/package/mining/Dockerfile
+    image: egandro/miner:latest
+    environment:
+      - DSN=${DSN:-host=postgres user=deframer password=deframer dbname=deframer port=5432 sslmode=disable}
+      - LOG_DATABASE=${LOG_DATABASE:-false}
+      - LOG_LEVEL=${LOG_LEVEL:-debug}
+    networks:
+      - infra-net
+
+networks:
+  infra-net:
+    name: deframer-infra-env-net
+    external: true

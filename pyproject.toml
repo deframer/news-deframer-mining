@@ -1,0 +1,19 @@
+[project]
+name = "news-deframer-mining"
+version = "0.1.0"
+description = "News Deframer Trend Mining Modules"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "duckdb",
+    "psycopg2-binary",
+    "python-dotenv",
+]
+
+[dependency-groups]
+dev = [
+    "ruff",
+    "pytest",
+    "mypy",
+    "types-psycopg2",
+]
