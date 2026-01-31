@@ -18,6 +18,7 @@ class DummyRepo:
         self.end_calls: list[tuple[str, Exception | None, int]] = []
         self.lock_duration: int | None = None
         self.fetched_for: list[str] = []
+        self.marked: list[list] = []
 
     def begin_mine_update(self, lock_duration: int):
         self.lock_duration = lock_duration
@@ -31,6 +32,9 @@ class DummyRepo:
     def fetch_pending_items(self, feed_id, feed_url=None):
         self.fetched_for.append(str(feed_id))
         return self.pending_items
+
+    def mark_items_mined(self, item_ids):
+        self.marked.append(list(item_ids))
 
 
 def make_config() -> Config:
@@ -100,6 +104,25 @@ def test_mine_feed_fetches_items(monkeypatch):
     mine_feed(Feed(id=feed_id), repo)
     assert repo.fetched_for == [str(feed_id)]
     assert len(calls) == 1
+    assert repo.marked == []
+
+
+def test_mine_feed_returns_error(monkeypatch, caplog):
+    feed = Feed(id=uuid4(), url="https://feed")
+    item = Item(id=uuid4(), feed_id=feed.id)
+    repo = DummyRepo(pending_items=[item])
+
+    def boom(feed, item):  # noqa: ARG001
+        raise RuntimeError("boom")
+
+    monkeypatch.setattr("news_deframer.miner.miner.mine_item", boom)
+
+    with caplog.at_level("ERROR"):
+        error = mine_feed(feed, repo)
+
+    assert isinstance(error, RuntimeError)
+    assert any("Failed to process item" in record.message for record in caplog.records)
+    assert repo.marked == []
 
 
 def test_mine_item_logs(caplog):

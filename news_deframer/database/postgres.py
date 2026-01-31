@@ -29,8 +29,6 @@ class Item:
     language: Optional[str] = None
     title: Optional[str] = None
     description: Optional[str] = None
-    title: Optional[str] = None
-    description: Optional[str] = None
 
 
 register_uuid()
@@ -183,6 +181,21 @@ class Postgres:
                 label = feed_url or str(feed_id)
                 logger.debug("Fetched %s pending items for feed %s", len(items), label)
                 return items
+
+    def mark_items_mined(self, item_ids: list[UUID]) -> None:
+        if not item_ids:
+            return
+
+        chunk_size = 100
+        with psycopg2.connect(self.config.dsn) as conn:
+            with conn.cursor() as cur:
+                for idx in range(0, len(item_ids), chunk_size):
+                    chunk = item_ids[idx : idx + chunk_size]
+                    cur.execute(
+                        "UPDATE items SET mining_done_at = NOW() WHERE id = ANY(%s)",
+                        (chunk,),
+                    )
+        logger.debug("Marked %s items as mined", len(item_ids))
 
 
 def _normalize_language_value(value: Optional[str]) -> Optional[str]:

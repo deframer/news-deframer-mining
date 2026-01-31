@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 import time
 from typing import Any, Optional
+from uuid import UUID
 
 from news_deframer.config import (
     DEFAULT_LOCK_DURATION,
@@ -52,7 +53,7 @@ def mine_next_feed(config: Config, repository: Optional[Any] = None) -> bool:
 
     mining_error: Exception | None = None
     try:
-        mine_feed(feed, repo)
+        mining_error = mine_feed(feed, repo)
     except Exception as exc:  # pragma: no cover - mining failure path
         mining_error = exc
         logger.error(
@@ -71,18 +72,43 @@ def mine_next_feed(config: Config, repository: Optional[Any] = None) -> bool:
     return True
 
 
-def mine_feed(feed: Feed, repository: Any) -> None:
-    """Fetch pending items for the feed and process each one."""
+def mine_feed(feed: Feed, repository: Any) -> Optional[Exception]:
+    """Fetch pending items for the feed and process each one.
+
+    Returns the first exception raised by `mine_item`, if any.
+    """
     items = repository.fetch_pending_items(feed.id, feed.url)
     items = [item for item in items if item.feed_id == feed.id]
     feed_label = feed.url or str(feed.id)
     if not items:
         logger.info("No pending items to mine for feed %s", feed_label)
-        return
+        return None
 
     logger.info("Fetched %s pending items for feed %s", len(items), feed_label)
+    processed_ids: list[UUID] = []
     for item in items:
-        mine_item(feed, item)
+        try:
+            mine_item(feed, item)
+        except Exception as exc:  # pragma: no cover - per-item failure
+            logger.error(
+                "Failed to process item",
+                extra={
+                    "feed_url": feed.url,
+                    "item_id": str(item.id),
+                },
+                exc_info=exc,
+            )
+            return exc
+        else:
+            processed_ids.append(item.id)
+
+    # repository.mark_items_mined(processed_ids)
+    logger.warning(
+        "Skipping persistence of mined items; database not updated",
+        extra={"feed_url": feed.url, "processed_count": len(processed_ids)},
+    )
+
+    return None
 
 
 def mine_item(feed: Feed, item: Item) -> None:
