@@ -93,32 +93,6 @@ class DuckDBStore:
             prepared,
         )
 
-    def fetch_trend_docs_by_language(self, language: str) -> list[TrendDoc]:
-        """Fetch the stored docs for a given language."""
-
-        rows = self._conn.execute(
-            """
-            SELECT item_id, feed_id, language, pub_date, categories, noun_stems, verb_stems
-            FROM trend_docs
-            WHERE language = ?
-            ORDER BY pub_date DESC NULLS LAST
-            """,
-            [language],
-        ).fetchall()
-
-        return [
-            TrendDoc(
-                item_id=row[0],
-                feed_id=row[1],
-                language=row[2],
-                pub_date=row[3],
-                categories=row[4],
-                noun_stems=row[5],
-                verb_stems=row[6],
-            )
-            for row in rows
-        ]
-
     def close(self) -> None:
         self._conn.close()
 

@@ -28,8 +28,8 @@ def test_miner_logs_task(caplog):
         item_id=str(uuid4()),
         language="en",
         categories=["a"],
-        title="Title",
-        description="Desc",
+        title="Title of Nouns",
+        description="Running verbs now",
         pub_date=datetime(2024, 1, 1, 12, 0, 0),
     )
 
@@ -42,3 +42,5 @@ def test_miner_logs_task(caplog):
     assert stored_doc.item_id == task.item_id
     assert stored_doc.feed_id == task.feed_id
     assert stored_doc.language == task.language
+    assert stored_doc.noun_stems == ["title", "of", "nouns"]
+    assert stored_doc.verb_stems == ["running", "verbs", "now"]

@@ -7,7 +7,7 @@ COMPOSE_ENV_FILE ?= .env-compose
 DOCKER_ENV_FLAG := $(if $(wildcard $(COMPOSE_ENV_FILE)),--env-file $(COMPOSE_ENV_FILE),--env-file /dev/null)
 DUCKDB_IMAGE ?= duckdb/duckdb:latest
 DUCKDB_UI_PORT ?= 4213
-DEFAULT_DUCKDB_FILE := build/trend_docs.duckdb
+DEFAULT_DUCKDB_FILE := ./trend_docs.duckdb
 DUCKDB_DB_FILE ?= $(if $(strip $(DUCK_DB_FILE)),$(strip $(DUCK_DB_FILE)),$(DEFAULT_DUCKDB_FILE))
 DUCKDB_UI_DB := $(DUCKDB_DB_FILE)
 ifeq ($(strip $(DUCKDB_UI_DB)),:memory)

@@ -5,7 +5,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime
 import logging
-from typing import Optional
+import re
+from typing import Optional, Sequence
 
 from news_deframer.config import Config
 from news_deframer.duckdb_store import DuckDBStore, TrendDoc
@@ -60,13 +61,27 @@ class Miner:
         if not self._store:
             return
 
+        noun_stems = _tokenize_words(task.title)
+        verb_stems = _tokenize_words(task.description)
+
         doc = TrendDoc(
             item_id=task.item_id,
             feed_id=task.feed_id,
             language=task.language,
             pub_date=task.pub_date,
             categories=tuple(task.categories),
-            noun_stems=None,
-            verb_stems=None,
+            # fake
+            noun_stems=noun_stems if noun_stems else None,
+            # fake
+            verb_stems=verb_stems if verb_stems else None,
         )
         self._store.insert_trend_docs([doc])
+
+
+_WORD_RE = re.compile(r"[A-Za-z]+")
+
+
+def _tokenize_words(value: Optional[str]) -> Sequence[str]:
+    if not value:
+        return []
+    return [match.group(0).lower() for match in _WORD_RE.finditer(value)]
