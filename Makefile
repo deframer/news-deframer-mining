@@ -1,4 +1,4 @@
-.PHONY: all build clean test help lint format type-check fix start stop down logs zap run sync duckdb-ui
+.PHONY: all build clean test help lint format type-check fix start stop down logs zap run sync duckdb-ui FORCE
 
 APP_NAME := miner
 DOCKER_REPO := deframer
@@ -81,3 +81,15 @@ fix:
 
 sync:
 	uv sync
+
+SQL_DIR := sql
+SQL_DB_FILE := $(DUCKDB_DB_FILE)
+
+$(SQL_DIR)/%.sql: FORCE
+	@docker run --rm -it \
+		-v "$(PWD):/workspace" \
+		-w /workspace \
+		$(DUCKDB_IMAGE) \
+		duckdb "$(SQL_DB_FILE)" -c ".read $@"
+
+FORCE:
