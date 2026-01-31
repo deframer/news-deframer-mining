@@ -30,7 +30,7 @@ logs:
 zap: down start
 
 run:
-	uv run python -m miner.main
+	uv run python -m news_deframer.cli.miner
 
 docker-build:
 	docker build -t $(DOCKER_REPO)/$(APP_NAME):latest -f build/package/mining/Dockerfile .

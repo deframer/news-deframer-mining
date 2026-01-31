@@ -10,10 +10,18 @@ dependencies = [
     "python-dotenv",
 ]
 
+[project.scripts]
+miner-cli = "news_deframer.cli.miner:main"
+
 [dependency-groups]
 dev = [
     "ruff",
     "pytest",
     "mypy",
     "types-psycopg2",
+]
+
+[tool.pytest.ini_options]
+pythonpath = [
+    ".",
 ]
