@@ -19,4 +19,4 @@ RUN --mount=type=cache,target=/root/.cache/uv \
     uv pip install --system .
 
 # Run the application
-CMD ["python", "-m", "miner.main"]
+CMD ["python", "-m", "miner.main", "mine"]
