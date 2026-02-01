@@ -136,3 +136,26 @@ def test_stopword_removal_real_models(
 
     assert nouns == expected
     assert verbs == []
+
+
+@pytest.mark.parametrize(
+    "language,text,expected",
+    [
+        ("en", "The Cats", "cat"),
+        ("en", "cats dogs", "cat dog"),
+        ("en", "   ", None),
+        ("en", None, None),
+        ("de", "Die Autos", "auto"),
+        ("fr", "Les Chats", "chat"),
+        ("en", "The", None),
+    ],
+)
+def test_stem_category_real_models(
+    language: str, text: str | None, expected: str | None
+) -> None:
+    try:
+        nlp._get_spacy_model(language)
+    except RuntimeError:
+        pytest.skip(f"spaCy model for {language} unavailable")
+
+    assert nlp.stem_category(text, language) == expected

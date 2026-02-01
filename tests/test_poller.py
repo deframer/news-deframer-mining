@@ -6,7 +6,11 @@ from news_deframer.config import Config, DEFAULT_LOCK_DURATION, POLLING_INTERVAL
 from news_deframer.duckdb_store import DuckDBStore, TrendDoc
 from news_deframer.postgres import Feed, Item
 from news_deframer.miner import Miner, MiningTask
-from news_deframer.poller import poll_feed, poll_next_feed
+from news_deframer.poller import (
+    _extract_title_and_description,
+    poll_feed,
+    poll_next_feed,
+)
 
 
 class DummyRepo:
@@ -129,8 +133,7 @@ def test_poll_feed_fetches_items() -> None:
             id=uuid4(),
             feed_id=feed_id,
             language="es",
-            title="foo",
-            description="bar",
+            content="<item><deframer:title_original>foo</deframer:title_original></item>",
             pub_date=datetime(2024, 1, 1, 0, 0, 0),
         )
     ]
@@ -148,7 +151,14 @@ def test_poll_feed_fetches_items() -> None:
 
 def test_poll_feed_uses_feed_root_domain() -> None:
     feed_id = uuid4()
-    pending_items = [Item(id=uuid4(), feed_id=feed_id)]
+    pending_items = [
+        Item(
+            id=uuid4(),
+            feed_id=feed_id,
+            content="<item/>",
+            pub_date=datetime(2024, 1, 1, 0, 0, 0),
+        )
+    ]
     repo = DummyRepo(pending_items=pending_items)
     miner = DummyMiner()
     feed = Feed(id=feed_id, url="https://feed", root_domain="feed.example")
@@ -162,7 +172,12 @@ def test_poll_feed_uses_feed_root_domain() -> None:
 
 def test_poll_feed_returns_error(monkeypatch, caplog) -> None:
     feed = Feed(id=uuid4(), url="https://feed")
-    item = Item(id=uuid4(), feed_id=feed.id)
+    item = Item(
+        id=uuid4(),
+        feed_id=feed.id,
+        content="<item/>",
+        pub_date=datetime(2024, 1, 1, 0, 0, 0),
+    )
     repo = DummyRepo(pending_items=[item])
 
     class ExplodingMiner(Miner):
@@ -179,3 +194,39 @@ def test_poll_feed_returns_error(monkeypatch, caplog) -> None:
 
     assert isinstance(error, RuntimeError)
     assert any("Failed to process item" in record.message for record in caplog.records)
+
+
+def test_extract_title_and_description_success() -> None:
+    content = """
+    <item>
+      <deframer:title_original>
+        Boost Your Productivity
+      </deframer:title_original>
+      <deframer:description_original>
+        Simple Tips
+      </deframer:description_original>
+      <title>Ignored Standard Title</title>
+    </item>
+    """
+    title, description = _extract_title_and_description(content)
+    assert title == "Boost Your Productivity"
+    assert description == "Simple Tips"
+
+
+def test_extract_title_and_description_ignores_standard_tags() -> None:
+    content = """
+    <item>
+      <title>Standard Title</title>
+      <description>Standard Description</description>
+    </item>
+    """
+    title, description = _extract_title_and_description(content)
+    assert title is None
+    assert description is None
+
+
+def test_extract_title_and_description_handles_malformed_xml() -> None:
+    content = "<item><title>Unclosed"
+    title, description = _extract_title_and_description(content)
+    assert title is None
+    assert description is None

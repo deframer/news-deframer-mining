@@ -112,8 +112,7 @@ def test_fetch_pending_items(monkeypatch):
                 ["x"],
                 "es",
                 datetime(2024, 6, 1, 12, 0, 0),
-                "title",
-                "desc",
+                "raw content",
             ),
         ]
     )
@@ -128,5 +127,4 @@ def test_fetch_pending_items(monkeypatch):
     assert items[0].categories == ["x"]
     assert items[0].language == "es"
     assert items[0].pub_date == datetime(2024, 6, 1, 12, 0, 0)
-    assert items[0].title == "title"
-    assert items[0].description == "desc"
+    assert items[0].content == "raw content"

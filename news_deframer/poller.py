@@ -8,6 +8,7 @@ import time
 from types import FrameType
 from typing import Any, Optional, cast
 from uuid import UUID
+import xml.etree.ElementTree as ET
 
 from news_deframer.config import (
     DEFAULT_LOCK_DURATION,
@@ -105,6 +106,12 @@ def poll_feed(feed: Feed, miner: Miner, repository: Any) -> Optional[Exception]:
     for item in items:
         try:
             task = _build_task(feed, item)
+            # logger.debug(
+            #     "Mining item %s | Title: %s | Description: %s",
+            #     item.id,
+            #     task.title,
+            #     task.description,
+            # )
             miner.mine_item(task)
         except Exception as exc:  # pragma: no cover - per-item failure
             logger.error(
@@ -119,11 +126,7 @@ def poll_feed(feed: Feed, miner: Miner, repository: Any) -> Optional[Exception]:
         else:
             processed_ids.append(item.id)
 
-    # repository.mark_items_mined(processed_ids)
-    logger.warning(
-        "Skipping persistence of mined items; database not updated",
-        extra={"feed_url": feed.url, "processed_count": len(processed_ids)},
-    )
+    repository.mark_items_mined(processed_ids)
 
     return None
 
@@ -162,6 +165,7 @@ def _build_task(feed: Feed, item: Item) -> MiningTask:
 
     categories = sorted({*feed.categories, *item.categories})
     domain = feed.root_domain or get_root_domain(feed.url)
+    title, description = _extract_title_and_description(item.content)
     return MiningTask(
         feed_id=str(feed.id),
         feed_url=feed.url,
@@ -169,7 +173,31 @@ def _build_task(feed: Feed, item: Item) -> MiningTask:
         item_id=str(item.id),
         language=language,
         categories=categories,
-        title=item.title,
-        description=item.description,
+        title=title,
+        description=description,
         pub_date=item.pub_date,
     )
+
+
+def _extract_title_and_description(content: str) -> tuple[Optional[str], Optional[str]]:
+    # Wrap content to handle XML fragments with potential unbound prefixes
+    wrapped = (
+        f'<root xmlns:deframer="dummy" xmlns:dc="dummy" xmlns:media="dummy" '
+        f'xmlns:content="dummy" xmlns:atom="dummy">{content}</root>'
+    )
+
+    try:
+        root = ET.fromstring(wrapped)
+    except ET.ParseError:
+        return None, None
+
+    title_orig = None
+    desc_orig = None
+
+    for elem in root.iter():
+        if elem.tag == "{dummy}title_original":
+            title_orig = elem.text.strip() if elem.text else None
+        elif elem.tag == "{dummy}description_original":
+            desc_orig = elem.text.strip() if elem.text else None
+
+    return title_orig, desc_orig

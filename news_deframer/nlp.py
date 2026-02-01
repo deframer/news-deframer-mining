@@ -49,6 +49,30 @@ def sanitize_text(value: Optional[str]) -> Optional[str]:
     return BeautifulSoup(value, "html.parser").get_text()
 
 
+def stem_category(text: Optional[str], language: str) -> Optional[str]:
+    """Return the lemmatized version of a category string."""
+    if not text:
+        return None
+
+    normalized = text.strip()
+    if not normalized:
+        return None
+
+    nlp = _get_spacy_model(language)
+    try:
+        doc = nlp(normalized)
+    except Exception as exc:
+        raise RuntimeError("Failed to process text with spaCy model") from exc
+
+    lemmas = [
+        token.lemma_.lower()
+        for token in doc
+        if token.is_alpha and not _is_stop_word(token.lemma_, language)
+    ]
+
+    return " ".join(lemmas) if lemmas else None
+
+
 _SPACY_LANGUAGE_MODELS = {
     "en": "en_core_web_sm",
     "de": "de_core_news_sm",
