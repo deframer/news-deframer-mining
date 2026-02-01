@@ -15,6 +15,7 @@ from news_deframer.config import (
     POLLING_INTERVAL,
     Config,
 )
+from news_deframer.netutil import get_root_domain
 from news_deframer.postgres import Feed, Item, Postgres
 from news_deframer.miner import Miner, MiningTask
 from news_deframer.duckdb_store import DuckDBStore
@@ -160,9 +161,11 @@ def _build_task(feed: Feed, item: Item) -> MiningTask:
         )
 
     categories = sorted({*feed.categories, *item.categories})
+    domain = feed.root_domain or get_root_domain(feed.url)
     return MiningTask(
         feed_id=str(feed.id),
         feed_url=feed.url,
+        root_domain=domain,
         item_id=str(item.id),
         language=language,
         categories=categories,

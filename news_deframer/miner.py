@@ -18,13 +18,14 @@ logger = logging.getLogger(__name__)
 @dataclass(slots=True)
 class MiningTask:
     feed_id: str
-    feed_url: Optional[str]
     item_id: str
     language: str
     categories: list[str]
     title: Optional[str]
     description: Optional[str]
     pub_date: datetime | None = None
+    feed_url: Optional[str] = None
+    root_domain: Optional[str] = None
 
 
 class Miner:
@@ -43,20 +44,6 @@ class Miner:
 
         task.title = sanitize_text(task.title)
         task.description = sanitize_text(task.description)
-
-        self._logger.info(
-            "Processed feed item",
-            extra={
-                "feed_id": task.feed_id,
-                "feed_url": task.feed_url,
-                "item_id": task.item_id,
-                "language": task.language,
-                "categories": task.categories,
-                "title": task.title,
-                "description": task.description,
-                "pub_date": task.pub_date.isoformat() if task.pub_date else None,
-            },
-        )
 
         title_text = task.title or ""
         description_text = task.description or ""
@@ -77,6 +64,7 @@ class Miner:
             categories=tuple(task.categories),
             noun_stems=noun_stems,
             verb_stems=verb_stems,
+            root_domain=task.root_domain,
         )
 
         self._persist_trend_doc(doc)

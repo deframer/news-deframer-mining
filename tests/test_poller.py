@@ -69,7 +69,7 @@ def test_poll_next_feed_returns_false_when_no_feed():
 
 def test_poll_next_feed_success_calls_end_update(monkeypatch):
     feed_id = uuid4()
-    repo = DummyRepo(feed=Feed(id=feed_id))
+    repo = DummyRepo(feed=Feed(id=feed_id, url="https://feed"))
     miner = DummyMiner()
 
     def fake_poll_feed(feed, miner_obj, repo_obj):
@@ -94,7 +94,7 @@ def test_poll_next_feed_success_calls_end_update(monkeypatch):
 
 def test_poll_next_feed_passes_errors(monkeypatch):
     feed_id = uuid4()
-    repo = DummyRepo(feed=Feed(id=feed_id))
+    repo = DummyRepo(feed=Feed(id=feed_id, url="https://feed"))
     miner = DummyMiner()
 
     def boom(feed, miner_obj, repo_obj):  # noqa: ARG001
@@ -133,11 +133,27 @@ def test_poll_feed_fetches_items():
     repo = DummyRepo(pending_items=pending_items)
     miner = DummyMiner()
 
-    poll_feed(Feed(id=feed_id), miner, repo)
+    poll_feed(Feed(id=feed_id, url="https://feed"), miner, repo)
 
     assert repo.fetched_for == [str(feed_id)]
     assert len(miner.tasks) == 1
     assert miner.tasks[0].pub_date == datetime(2024, 1, 1, 0, 0, 0)
+    assert miner.tasks[0].categories == []
+    assert miner.tasks[0].root_domain == "feed"
+
+
+def test_poll_feed_uses_feed_root_domain():
+    feed_id = uuid4()
+    pending_items = [Item(id=uuid4(), feed_id=feed_id)]
+    repo = DummyRepo(pending_items=pending_items)
+    miner = DummyMiner()
+    feed = Feed(id=feed_id, url="https://feed", root_domain="feed.example")
+
+    poll_feed(feed, miner, repo)
+
+    assert len(miner.tasks) == 1
+    assert miner.tasks[0].categories == []
+    assert miner.tasks[0].root_domain == "feed.example"
 
 
 def test_poll_feed_returns_error(monkeypatch, caplog):

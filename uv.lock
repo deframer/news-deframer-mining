@@ -596,6 +596,7 @@ dependencies = [
     { name = "pl-core-news-sm" },
     { name = "psycopg2-binary" },
     { name = "pt-core-news-sm" },
+    { name = "publicsuffix2" },
     { name = "pyarrow" },
     { name = "pydantic-settings" },
     { name = "python-dotenv" },
@@ -626,6 +627,7 @@ requires-dist = [
     { name = "pl-core-news-sm", url = "https://github.com/explosion/spacy-models/releases/download/pl_core_news_sm-3.7.0/pl_core_news_sm-3.7.0-py3-none-any.whl" },
     { name = "psycopg2-binary" },
     { name = "pt-core-news-sm", url = "https://github.com/explosion/spacy-models/releases/download/pt_core_news_sm-3.7.0/pt_core_news_sm-3.7.0-py3-none-any.whl" },
+    { name = "publicsuffix2" },
     { name = "pyarrow" },
     { name = "pydantic-settings" },
     { name = "python-dotenv" },
@@ -811,6 +813,15 @@ wheels = [
 
 [package.metadata]
 requires-dist = [{ name = "spacy", specifier = ">=3.7.0,<3.8.0" }]
+
+[[package]]
+name = "publicsuffix2"
+version = "2.20191221"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/5a/04/1759906c4c5b67b2903f546de234a824d4028ef24eb0b1122daa43376c20/publicsuffix2-2.20191221.tar.gz", hash = "sha256:00f8cc31aa8d0d5592a5ced19cccba7de428ebca985db26ac852d920ddd6fe7b", size = 99592, upload-time = "2019-12-21T11:30:44.863Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/9d/16/053c2945c5e3aebeefb4ccd5c5e7639e38bc30ad1bdc7ce86c6d01707726/publicsuffix2-2.20191221-py2.py3-none-any.whl", hash = "sha256:786b5e36205b88758bd3518725ec8cfe7a8173f5269354641f581c6b80a99893", size = 89033, upload-time = "2019-12-21T11:30:41.744Z" },
+]
 
 [[package]]
 name = "pyarrow"

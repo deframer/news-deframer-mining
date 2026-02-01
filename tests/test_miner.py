@@ -44,7 +44,6 @@ def test_miner_logs_task(caplog):
     with caplog.at_level("INFO"):
         miner.mine_item(task)
 
-    assert any("Processed feed item" in record.message for record in caplog.records)
     assert len(store.inserted) == 1
     stored_doc = store.inserted[0]
     assert stored_doc.item_id == task.item_id

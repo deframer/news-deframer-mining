@@ -83,7 +83,9 @@ def test_begin_mine_update_returns_none(monkeypatch):
 def test_begin_mine_update_returns_feed(monkeypatch):
     feed_id = uuid4()
     cursor = CursorStub(
-        fetchone_queue=[(feed_id, ["cat1", "cat2"], "EN", "https://feed.example")]
+        fetchone_queue=[
+            (feed_id, ["cat1", "cat2"], "EN", "https://feed.example", "feed.example")
+        ]
     )
     patch_connect(monkeypatch, cursor)
     repo = postgres_module.Postgres(make_config())
@@ -95,6 +97,7 @@ def test_begin_mine_update_returns_feed(monkeypatch):
     assert feed.categories == ["cat1", "cat2"]
     assert feed.language == "en"
     assert feed.url == "https://feed.example"
+    assert feed.root_domain == "feed.example"
     assert len(cursor.execute_calls) >= 2  # select + update
 
 
