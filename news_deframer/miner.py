@@ -9,7 +9,7 @@ from typing import Optional
 
 from news_deframer.config import Config
 from news_deframer.duckdb_store import DuckDBStore, TrendDoc
-from news_deframer.nlp import extract_stems, sanitize_text
+from news_deframer.nlp import extract_stems, sanitize_text, stem_category
 
 
 logger = logging.getLogger(__name__)
@@ -49,6 +49,12 @@ class Miner:
         description_text = task.description or ""
         content = f"{title_text}{' ' if title_text else ''}{description_text}"
 
+        category_list = []
+        for c in task.categories:
+            if stemmed := stem_category(sanitize_text(c), task.language):
+                category_list.append(stemmed)
+        categories = tuple(category_list)
+
         noun_stems, verb_stems = extract_stems(
             content,
             task.language,
@@ -61,7 +67,7 @@ class Miner:
             feed_id=task.feed_id,
             language=task.language,
             pub_date=task.pub_date,
-            categories=tuple(task.categories),
+            categories=categories,
             noun_stems=noun_stems,
             verb_stems=verb_stems,
             root_domain=task.root_domain,

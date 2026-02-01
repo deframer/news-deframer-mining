@@ -28,11 +28,10 @@ class Feed:
 class Item:
     id: UUID
     feed_id: UUID
+    content: str
+    pub_date: datetime
     categories: list[str] = field(default_factory=list)
     language: Optional[str] = None
-    pub_date: datetime | None = None
-    title: Optional[str] = None
-    description: Optional[str] = None
 
 
 register_uuid()
@@ -171,13 +170,10 @@ class Postgres:
                 categories,
                 language,
                 pub_date,
-                think_result ->> 'title_original' AS title,
-                think_result ->> 'description_original' AS description
+                content
             FROM items
             WHERE feed_id = %s
               AND mining_done_at IS NULL
-              AND think_result IS NOT NULL
-              AND think_error IS NULL
         """
 
         with psycopg2.connect(self.config.dsn) as conn:
@@ -191,8 +187,7 @@ class Postgres:
                         categories=list(row[2] or []),
                         language=_normalize_language_value(row[3]),
                         pub_date=row[4],
-                        title=row[5],
-                        description=row[6],
+                        content=row[5],
                     )
                     for row in rows
                 ]
