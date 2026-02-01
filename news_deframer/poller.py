@@ -127,10 +127,6 @@ def poll_feed(feed: Feed, miner: Miner, repository: Any) -> Optional[Exception]:
             processed_ids.append(item.id)
 
     repository.mark_items_mined(processed_ids)
-    # logger.warning(
-    #     "Skipping persistence of mined items; database not updated",
-    #     extra={"feed_url": feed.url, "processed_count": len(processed_ids)},
-    # )
 
     return None
 
