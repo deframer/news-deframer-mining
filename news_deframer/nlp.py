@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Optional, Sequence
+from typing import TYPE_CHECKING, Any, Iterable, Optional, Sequence
 from bs4 import BeautifulSoup
 
 try:  # pragma: no cover - optional dependency
@@ -35,22 +35,8 @@ def extract_stems(
     except Exception as exc:  # pragma: no cover - spaCy runtime failure
         raise RuntimeError("Failed to process text with spaCy model") from exc
 
-    noun_stems = [
-        token.lemma_.lower()
-        for token in doc
-        if token.pos_ in {"NOUN", "PROPN"}
-        and token.lemma_
-        and token.is_alpha
-        and not _is_stop_word(token.lemma_, language)
-    ]
-    verb_stems = [
-        token.lemma_.lower()
-        for token in doc
-        if token.pos_ == "VERB"
-        and token.lemma_
-        and token.is_alpha
-        and not _is_stop_word(token.lemma_, language)
-    ]
+    noun_stems = _collect_sorted_unique_stems(doc, {"NOUN", "PROPN"}, language)
+    verb_stems = _collect_sorted_unique_stems(doc, {"VERB"}, language)
 
     return noun_stems, verb_stems
 
@@ -138,3 +124,20 @@ def _get_stopwords(language: str) -> frozenset[str]:
 
 def _is_stop_word(value: str, language: str) -> bool:
     return value.lower() in _get_stopwords(language)
+
+
+def _collect_sorted_unique_stems(
+    tokens: Iterable[Any],
+    allowed_pos: set[str],
+    language: str,
+) -> list[str]:
+    stems = {
+        token.lemma_.lower()
+        for token in tokens
+        if token.pos_ in allowed_pos
+        and token.lemma_
+        and token.is_alpha
+        and not _is_stop_word(token.lemma_, language)
+    }
+
+    return sorted(stems)
