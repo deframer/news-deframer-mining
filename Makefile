@@ -86,7 +86,7 @@ SQL_DIR := sql
 SQL_DB_FILE := $(DUCKDB_DB_FILE)
 
 $(SQL_DIR)/%.sql: FORCE
-	@docker run --rm -it \
+	@docker run --rm \
 		-v "$(PWD):/workspace" \
 		-w /workspace \
 		$(DUCKDB_IMAGE) \
