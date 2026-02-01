@@ -12,6 +12,7 @@ import psycopg2
 from psycopg2.extras import register_uuid
 
 from news_deframer.config import Config
+from news_deframer.logger import SilentLogger
 
 
 @dataclass
@@ -44,6 +45,10 @@ class Postgres:
 
     def __init__(self, config: Config):
         self.config = config
+        if config.log_database:
+            self._logger: logging.Logger | SilentLogger = logger.getChild("Postgres")
+        else:
+            self._logger = SilentLogger()
 
     def begin_mine_update(self, lock_duration: int) -> Optional[Feed]:
         """Attempt to lock the next feed ready for mining."""
@@ -74,7 +79,7 @@ class Postgres:
                 cur.execute(select_sql)
                 row = cur.fetchone()
                 if not row:
-                    logger.debug("No feeds eligible for mining")
+                    self._logger.debug("No feeds eligible for mining")
                     return None
 
                 feed_id = row[0]
@@ -87,7 +92,7 @@ class Postgres:
                 feed_url = str(url)
                 root_domain = str(row[4]) if row[4] is not None else None
                 feed_label = feed_url or str(feed_id)
-                logger.debug("Locked feed %s for mining", feed_label)
+                self._logger.debug("Locked feed %s for mining", feed_label)
                 return Feed(
                     id=feed_id,
                     url=feed_url,
@@ -125,7 +130,7 @@ class Postgres:
                         WHERE id = %s
                     """
                     cur.execute(update_sql, (error_text, feed_id))
-                    logger.debug("Marked feed %s mining error", feed_label)
+                    self._logger.debug("Marked feed %s mining error", feed_label)
                     return
 
                 if enabled and mining:
@@ -138,7 +143,7 @@ class Postgres:
                         WHERE id = %s
                     """
                     cur.execute(update_sql, (retry_seconds, feed_id))
-                    logger.debug(
+                    self._logger.debug(
                         "Feed %s mining complete; scheduled next run", feed_label
                     )
                 else:
@@ -151,7 +156,7 @@ class Postgres:
                         WHERE id = %s
                     """
                     cur.execute(update_sql, (feed_id,))
-                    logger.debug(
+                    self._logger.debug(
                         "Feed %s mining complete; no further schedule", feed_label
                     )
 
@@ -192,7 +197,9 @@ class Postgres:
                     for row in rows
                 ]
                 label = feed_url or str(feed_id)
-                logger.debug("Fetched %s pending items for feed %s", len(items), label)
+                self._logger.debug(
+                    "Fetched %s pending items for feed %s", len(items), label
+                )
                 return items
 
     def mark_items_mined(self, item_ids: list[UUID]) -> None:
@@ -208,7 +215,7 @@ class Postgres:
                         "UPDATE items SET mining_done_at = NOW() WHERE id = ANY(%s)",
                         (chunk,),
                     )
-        logger.debug("Marked %s items as mined", len(item_ids))
+        self._logger.debug("Marked %s items as mined", len(item_ids))
 
 
 def _normalize_language_value(value: Optional[str]) -> Optional[str]:

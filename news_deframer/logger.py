@@ -30,6 +30,37 @@ _BASE_FIELDS = {
 }
 
 
+class SilentLogger:
+    """Simple logger drop-in that ignores all log messages."""
+
+    def __init__(self, name: str = "news_deframer.silent") -> None:
+        self.name = name
+
+    def debug(self, *args, **kwargs) -> None:  # noqa: D401 - intentionally empty
+        return None
+
+    def info(self, *args, **kwargs) -> None:
+        return None
+
+    def warning(self, *args, **kwargs) -> None:
+        return None
+
+    def error(self, *args, **kwargs) -> None:
+        return None
+
+    def exception(self, *args, **kwargs) -> None:
+        return None
+
+    def log(self, *args, **kwargs) -> None:
+        return None
+
+    def getChild(self, name: str) -> "SilentLogger":  # noqa: N802 - mimic logging API
+        return self
+
+    def isEnabledFor(self, level: int) -> bool:  # noqa: N802
+        return False
+
+
 class ExtraFormatter(logging.Formatter):
     def format(self, record: logging.LogRecord) -> str:  # type: ignore[override]
         base = super().format(record)
