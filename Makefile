@@ -5,23 +5,15 @@ DOCKER_REPO := deframer
 DOCKER_COMPOSE_FILE ?= docker-compose.yml
 COMPOSE_ENV_FILE ?= .env-compose
 DOCKER_ENV_FLAG := $(if $(wildcard $(COMPOSE_ENV_FILE)),--env-file $(COMPOSE_ENV_FILE),--env-file /dev/null)
-DUCKDB_IMAGE ?= duckdb/duckdb:latest
-DUCKDB_UI_PORT ?= 4213
-DEFAULT_DUCKDB_FILE := ./trend_docs.duckdb
-DUCKDB_DB_FILE ?= $(if $(strip $(DUCK_DB_FILE)),$(strip $(DUCK_DB_FILE)),$(DEFAULT_DUCKDB_FILE))
-DUCKDB_UI_DB := $(DUCKDB_DB_FILE)
-ifeq ($(strip $(DUCKDB_UI_DB)),:memory)
-  DUCKDB_UI_DB := $(DEFAULT_DUCKDB_FILE)
-endif
-ifeq ($(strip $(DUCKDB_UI_DB)),:memory:)
-  DUCKDB_UI_DB := $(DEFAULT_DUCKDB_FILE)
-endif
 
 ifneq ("$(wildcard .env)","")
-  #$(info using .env file)
   include .env
   export $(shell sed 's/=.*//' .env)
 endif
+
+DUCKDB_IMAGE ?= duckdb/duckdb:latest
+DUCKDB_UI_PORT ?= 4213
+DUCKDB_DB_FILE ?= ./trend_docs.duckdb
 
 all:
 	@echo all
@@ -44,14 +36,17 @@ miner:
 	uv run python -m news_deframer.cli.miner
 
 duckdb-ui:
-	@mkdir -p $(dir $(DUCKDB_UI_DB))
-	@echo "Launching DuckDB UI at http://localhost:$(DUCKDB_UI_PORT) using $(DUCKDB_UI_DB)"
-	@echo "Press Ctrl+C to stop the UI session"
+	@set -euo pipefail; \
+	DB_PATH="/workspace/$(DUCKDB_DB_FILE)"; \
+	DB_ALIAS="$$(DB_FILE="$(DUCKDB_DB_FILE)" python -c 'import os,re; path=os.path.basename(os.environ.get("DB_FILE","")); base=os.path.splitext(path)[0] or "attached_db"; alias=re.sub(r"\\W+","_",base) or "attached_db"; alias="db_"+alias if alias[0].isdigit() else alias; print(alias)')"; \
+	echo "Launching DuckDB UI at http://localhost:$(DUCKDB_UI_PORT) using read-only attachment $$DB_PATH (schema $$DB_ALIAS)"; \
+	echo "Press Ctrl+C to stop the UI session"; \
 	docker run --rm -it --net host \
-		-v "$(PWD):/workspace" \
-		-w /workspace \
+		-v "$(PWD):/workspace:ro" \
 		$(DUCKDB_IMAGE) \
-		duckdb "$(DUCKDB_UI_DB)" \
+		duckdb "/tmp/zzz_ui_scratch.duckdb" \
+		-cmd "ATTACH DATABASE '$$DB_PATH' AS $$DB_ALIAS (READ_ONLY);" \
+		-cmd "USE $$DB_ALIAS.main;" \
 		-cmd "SET ui_local_port=$(DUCKDB_UI_PORT);" \
 		-cmd "CALL start_ui_server();"
 
@@ -83,13 +78,12 @@ sync:
 	uv sync
 
 SQL_DIR := sql
-SQL_DB_FILE := $(DUCKDB_DB_FILE)
 
 $(SQL_DIR)/%.sql: FORCE
 	@docker run --rm \
 		-v "$(PWD):/workspace" \
 		-w /workspace \
 		$(DUCKDB_IMAGE) \
-		duckdb "$(SQL_DB_FILE)" -c ".read $@"
+		duckdb --readonly "$(DUCKDB_DB_FILE)" -c ".read $@"
 
 FORCE:

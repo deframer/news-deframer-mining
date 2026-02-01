@@ -49,7 +49,7 @@ def test_miner_logs_task(caplog):
     assert stored_doc.item_id == task.item_id
     assert stored_doc.feed_id == task.feed_id
     assert stored_doc.language == task.language
-    assert stored_doc.noun_stems == ["title", "nouns", "verb"]
+    assert stored_doc.noun_stems == ["nouns", "title", "verb"]
     assert stored_doc.verb_stems == ["run"]
 
 
@@ -60,7 +60,7 @@ def test_miner_logs_task(caplog):
             "en",
             "The quick brown fox",
             "jumps over the lazy dog",
-            ["fox", "dog"],
+            ["dog", "fox"],
             ["jump"],
         ),
         (
@@ -74,7 +74,7 @@ def test_miner_logs_task(caplog):
             "fr",
             "Le renard brun rapide",
             "saute par-dessus le chien paresseux",
-            ["renard", "chien"],
+            ["chien", "renard"],
             ["saute"],
         ),
     ],

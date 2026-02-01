@@ -43,6 +43,34 @@ def test_extract_stems_uses_spacy_when_available(monkeypatch) -> None:
     assert verbs == ["walk"]
 
 
+def test_extract_stems_returns_unique_sorted_lemmas(monkeypatch) -> None:
+    class DummyToken:
+        def __init__(self, lemma: str, pos: str):
+            self.lemma_ = lemma
+            self.pos_ = pos
+            self.is_alpha = True
+
+    class DummyModel:
+        def __call__(self, _: str):
+            return [
+                DummyToken("Banana", "NOUN"),
+                DummyToken("apple", "PROPN"),
+                DummyToken("banana", "NOUN"),
+                DummyToken("carrot", "NOUN"),
+                DummyToken("Run", "VERB"),
+                DummyToken("run", "VERB"),
+                DummyToken("Jog", "VERB"),
+            ]
+
+    monkeypatch.setattr(nlp, "_get_spacy_model", lambda _: DummyModel())
+    monkeypatch.setattr(nlp, "_get_stopwords", lambda _lang: frozenset())
+
+    nouns, verbs = nlp.extract_stems("content", "en")
+
+    assert nouns == ["apple", "banana", "carrot"]
+    assert verbs == ["jog", "run"]
+
+
 def test_extract_stems_with_real_english_model() -> None:
     try:
         nlp._get_spacy_model("en")
@@ -54,7 +82,7 @@ def test_extract_stems_with_real_english_model() -> None:
         "en",
     )
 
-    assert nouns == ["fox", "dog"]
+    assert nouns == ["dog", "fox"]
     assert verbs == ["jump"]
 
 
@@ -84,16 +112,16 @@ def test_extract_stems_with_real_french_model() -> None:
         "fr",
     )
 
-    assert nouns == ["renard", "chien"]
+    assert nouns == ["chien", "renard"]
     assert verbs == ["saute"]
 
 
 @pytest.mark.parametrize(
     "language,text,expected",
     [
-        ("en", "The fox and the dog", ["fox", "dog"]),
+        ("en", "The fox and the dog", ["dog", "fox"]),
         ("de", "Der Fuchs und der Hund", ["fuchs", "hund"]),
-        ("fr", "Le renard et le chien", ["renard", "chien"]),
+        ("fr", "Le renard et le chien", ["chien", "renard"]),
     ],
 )
 def test_stopword_removal_real_models(
