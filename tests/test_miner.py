@@ -39,6 +39,7 @@ def test_miner_logs_task(caplog):
         title="Title of Nouns",
         description="Running verbs now",
         pub_date=datetime(2024, 1, 1, 12, 0, 0),
+        root_domain="example.com",
     )
 
     with caplog.at_level("INFO"):
@@ -102,6 +103,7 @@ def test_miner_stem_extraction_real_models(
         title=title,
         description=description,
         pub_date=datetime(2024, 1, 1, 12, 0, 0),
+        root_domain="example.com",
     )
 
     miner.mine_item(task)

@@ -83,7 +83,8 @@ def test_poll_next_feed_success_calls_end_update(monkeypatch) -> None:
                 categories=[],
                 title=None,
                 description=None,
-                pub_date=None,
+                pub_date=datetime(2024, 1, 1, 0, 0, 0),
+                root_domain="example.com",
             )
         )
 

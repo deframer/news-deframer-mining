@@ -24,9 +24,9 @@ class MiningTask:
     categories: list[str]
     title: Optional[str]
     description: Optional[str]
-    pub_date: datetime | None = None
+    pub_date: datetime
+    root_domain: str
     feed_url: Optional[str] = None
-    root_domain: Optional[str] = None
 
 
 class Miner:
