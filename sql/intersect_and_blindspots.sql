@@ -1,13 +1,19 @@
 SET duckdb.force_execution = true;
 
+SET SESSION "vars.last" = '30 days';
+SET SESSION "vars.top" = 10;
+
+SET SESSION "vars.domain_a" = 'spiegel.de';
+SET SESSION "vars.domain_b" = 'tagesschau.de';
+
 -- Parameters
 WITH params AS (
     SELECT
-        current_date - INTERVAL '30 days' AS start_date,
+        current_date - current_setting('vars.last')::INTERVAL AS start_date,
         current_date AS end_date,
-        'spiegel.de'::VARCHAR AS root_domain_a,
-        'tagesschau.de'::VARCHAR AS root_domain_b,
-        10 AS result_limit
+        current_setting('vars.domain_a')::VARCHAR AS root_domain_a,
+        current_setting('vars.domain_b')::VARCHAR AS root_domain_b,
+        current_setting('vars.top')::INT AS result_limit
 ),
 filtered_docs AS (
     SELECT td.*, p.root_domain_a, p.root_domain_b

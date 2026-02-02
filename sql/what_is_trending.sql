@@ -1,7 +1,9 @@
 SET duckdb.force_execution = true;
-SET SESSION "vars.domain" = 'bbc.com';
-SET SESSION "vars.top" = 5;
+
 SET SESSION "vars.last" = '30 days';
+SET SESSION "vars.top" = 5;
+
+SET SESSION "vars.domain" = 'apollo-news.net';
 
 -- Parameters
 WITH params AS (

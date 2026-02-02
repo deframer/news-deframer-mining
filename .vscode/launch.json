@@ -1,0 +1,13 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Miner CLI (poll)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "news_deframer.cli.miner",
+      "justMyCode": true,
+      "console": "integratedTerminal"
+    }
+  ]
+}

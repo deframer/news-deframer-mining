@@ -1,13 +1,17 @@
 SET duckdb.force_execution = true;
 
+SET SESSION "vars.last" = '30 days';
+SET SESSION "vars.target_word" = 'apollo';
+SET SESSION "vars.language" = 'de';
+
 -- Parameters
 WITH params AS (
     SELECT
-        current_date - INTERVAL '30 days' AS start_date,
+        current_date - current_setting('vars.last')::INTERVAL AS start_date,
         current_date AS end_date,
-        'trump'::VARCHAR AS target_word,
+        current_setting('vars.target_word')::VARCHAR AS target_word,
         NULL::VARCHAR AS domain,
-        'de'::VARCHAR AS language
+        current_setting('vars.target_word')::VARCHAR AS language
 ),
 filtered_docs AS (
     SELECT td.*
