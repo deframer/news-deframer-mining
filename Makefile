@@ -6,6 +6,8 @@ DOCKER_COMPOSE_FILE ?= docker-compose.yml
 COMPOSE_ENV_FILE ?= .env-compose
 DOCKER_ENV_FLAG := $(if $(wildcard $(COMPOSE_ENV_FILE)),--env-file $(COMPOSE_ENV_FILE),--env-file /dev/null)
 
+DB_IMAGE := pgduckdb/pgduckdb:18-main
+
 ifneq ("$(wildcard .env)","")
   include .env
   export $(shell sed 's/=.*//' .env)
@@ -58,13 +60,14 @@ fix:
 sync:
 	uv sync
 
-# SQL_DIR := sql
+SQL_DIR := sql
 
-# $(SQL_DIR)/%.sql: FORCE
-# 	@docker run --rm \
-# 		-v "$(PWD):/workspace" \
-# 		-w /workspace \
-# 		$(DUCKDB_IMAGE) \
-# 		duckdb --readonly "$(DUCKDB_DB_FILE)" -c ".read $@"
+$(SQL_DIR)/%.sql: FORCE
+	docker run --rm -i --network host \
+		-v "$(CURDIR):/workspace" \
+		-w /workspace \
+		$(DB_IMAGE) \
+		psql "postgres://$${DB_USER}:$${DB_PASSWORD}@$${DB_HOST}:$${DB_PORT}/$${DB_NAME}" \
+		-f $@
 
-# FORCE:
+FORCE:

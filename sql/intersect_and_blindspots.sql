@@ -1,7 +1,9 @@
+SET duckdb.force_execution = true;
+
 -- Parameters
 WITH params AS (
     SELECT
-        current_date - INTERVAL 30 DAY AS start_date,
+        current_date - INTERVAL '30 days' AS start_date,
         current_date AS end_date,
         'spiegel.de'::VARCHAR AS root_domain_a,
         'tagesschau.de'::VARCHAR AS root_domain_b,
@@ -9,11 +11,11 @@ WITH params AS (
 ),
 filtered_docs AS (
     SELECT td.*, p.root_domain_a, p.root_domain_b
-    FROM trend_docs td
+    FROM trends td
     CROSS JOIN params p
     WHERE td.pub_date IS NOT NULL
       AND td.pub_date >= p.start_date
-      AND td.pub_date < p.end_date + INTERVAL 1 DAY
+      AND td.pub_date < p.end_date + INTERVAL '1 day'
 ),
 unnested AS (
     SELECT

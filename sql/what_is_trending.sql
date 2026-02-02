@@ -1,19 +1,22 @@
+SET duckdb.force_execution = true;
+
 -- Parameters
 WITH params AS (
     SELECT
-        current_date - INTERVAL 30 DAY AS start_date,
+        current_date - INTERVAL '30 days' AS start_date,
         current_date AS end_date,
         --'spiegel.de'::VARCHAR AS domain,
         'tagesschau.de'::VARCHAR AS domain,
+        --'globalnews.local:8003'::VARCHAR AS domain,
         5 AS result_limit
 ),
 filtered_docs AS (
     SELECT td.*, p.domain
-    FROM trend_docs td
+    FROM trends td
     CROSS JOIN params p
     WHERE td.pub_date IS NOT NULL
       AND td.pub_date >= p.start_date
-      AND td.pub_date < p.end_date + INTERVAL 1 DAY
+      AND td.pub_date < p.end_date + INTERVAL '1 day'
       AND (p.domain IS NULL OR td.root_domain = p.domain)
 ),
 unnested AS (
@@ -26,7 +29,7 @@ aggregated AS (
         noun AS word,
         COUNT(*) AS word_count
     FROM unnested
-    WHERE word IS NOT NULL AND word <> ''
+    WHERE noun IS NOT NULL AND noun <> ''
     GROUP BY 1
 ),
 total_counts AS (
@@ -38,7 +41,7 @@ ranked AS (
         word,
         word_count,
         CASE WHEN total.total_noun_count > 0
-             THEN word_count::DOUBLE / total.total_noun_count
+             THEN word_count::FLOAT / total.total_noun_count
              ELSE NULL
         END AS relative_score
     FROM aggregated, total_counts total, params p
