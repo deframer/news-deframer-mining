@@ -72,4 +72,4 @@ class Miner:
             noun_stems=list(noun_stems),
             verb_stems=list(verb_stems),
         )
-        self._repository.upsert_trend(trend)
+        self._repository.upsert_trends([trend])

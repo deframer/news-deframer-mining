@@ -14,8 +14,8 @@ class RepositoryStub:
     def __init__(self):
         self.upserted = []
 
-    def upsert_trend(self, trend: Trend):
-        self.upserted.append(trend)
+    def upsert_trends(self, trends: list[Trend]):
+        self.upserted.extend(trends)
 
 
 def make_config() -> Config:

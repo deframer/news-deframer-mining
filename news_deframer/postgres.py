@@ -9,7 +9,7 @@ from typing import Optional
 from uuid import UUID
 
 import psycopg2
-from psycopg2.extras import register_uuid
+from psycopg2.extras import execute_values, register_uuid
 
 from news_deframer.config import Config
 from news_deframer.logger import SilentLogger
@@ -213,19 +213,24 @@ class Postgres:
         if not item_ids:
             return
 
-        chunk_size = 100
+        sql = """
+            UPDATE items AS t
+            SET mining_done_at = NOW()
+            FROM (VALUES %s) AS v(id)
+            WHERE t.id = v.id::uuid
+        """
+        values = [(id,) for id in item_ids]
+
         with psycopg2.connect(self.config.dsn) as conn:
             with conn.cursor() as cur:
-                for idx in range(0, len(item_ids), chunk_size):
-                    chunk = item_ids[idx : idx + chunk_size]
-                    cur.execute(
-                        "UPDATE items SET mining_done_at = NOW() WHERE id = ANY(%s)",
-                        (chunk,),
-                    )
+                execute_values(cur, sql, values)
         self._logger.debug("Marked %s items as mined", len(item_ids))
 
-    def upsert_trend(self, trend: Trend) -> None:
-        """Insert or update a trend record."""
+    def upsert_trends(self, trends: list[Trend]) -> None:
+        """Insert or update multiple trend records in batch."""
+        if not trends:
+            return
+
         sql = """
             INSERT INTO trends (
                 item_id,
@@ -236,16 +241,7 @@ class Postgres:
                 noun_stems,
                 verb_stems,
                 root_domain
-            ) VALUES (
-                %(item_id)s,
-                %(feed_id)s,
-                %(language)s,
-                %(pub_date)s,
-                %(category_stems)s,
-                %(noun_stems)s,
-                %(verb_stems)s,
-                %(root_domain)s
-            )
+            ) VALUES %s
             ON CONFLICT (item_id) DO UPDATE SET
                 feed_id = EXCLUDED.feed_id,
                 language = EXCLUDED.language,
@@ -256,22 +252,24 @@ class Postgres:
                 root_domain = EXCLUDED.root_domain
         """
 
+        values = [
+            (
+                t.item_id,
+                t.feed_id,
+                t.language,
+                t.pub_date,
+                t.category_stems,
+                t.noun_stems,
+                t.verb_stems,
+                t.root_domain,
+            )
+            for t in trends
+        ]
+
         with psycopg2.connect(self.config.dsn) as conn:
             with conn.cursor() as cur:
-                cur.execute(
-                    sql,
-                    {
-                        "item_id": trend.item_id,
-                        "feed_id": trend.feed_id,
-                        "language": trend.language,
-                        "pub_date": trend.pub_date,
-                        "category_stems": trend.category_stems,
-                        "noun_stems": trend.noun_stems,
-                        "verb_stems": trend.verb_stems,
-                        "root_domain": trend.root_domain,
-                    },
-                )
-        self._logger.debug("Upserted trend for item %s", trend.item_id)
+                execute_values(cur, sql, values)
+        self._logger.debug("Upserted %s trends", len(trends))
 
 
 def _normalize_language_value(value: Optional[str]) -> Optional[str]:
