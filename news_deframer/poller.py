@@ -8,7 +8,8 @@ import time
 from types import FrameType
 from typing import Any, Optional, cast
 from uuid import UUID
-import xml.etree.ElementTree as ET
+
+import xmltodict  # type: ignore
 
 from news_deframer.config import (
     DEFAULT_LOCK_DURATION,
@@ -168,24 +169,33 @@ def _build_task(feed: Feed, item: Item) -> MiningTask:
 
 
 def _extract_title_and_description(content: str) -> tuple[Optional[str], Optional[str]]:
-    # Wrap content to handle XML fragments with potential unbound prefixes
-    wrapped = (
-        f'<root xmlns:deframer="dummy" xmlns:dc="dummy" xmlns:media="dummy" '
-        f'xmlns:content="dummy" xmlns:atom="dummy">{content}</root>'
-    )
+    # Wrap content to handle XML fragments (multiple root elements)
+    wrapped = f"<root>{content}</root>"
 
     try:
-        root = ET.fromstring(wrapped)
-    except ET.ParseError:
+        # process_namespaces=False ensures we don't fail on unbound prefixes
+        doc = xmltodict.parse(wrapped, process_namespaces=False)
+    except Exception:
         return None, None
 
-    title_orig = None
-    desc_orig = None
+    def find_text(obj: Any, key: str) -> Optional[str]:
+        if isinstance(obj, dict):
+            if key in obj:
+                val = obj[key]
+                if isinstance(val, str):
+                    return val.strip()
+                if isinstance(val, dict):
+                    return val.get("#text", "").strip() or None
+                return None
+            for v in obj.values():
+                if found := find_text(v, key):
+                    return found
+        elif isinstance(obj, list):
+            for item in obj:
+                if found := find_text(item, key):
+                    return found
+        return None
 
-    for elem in root.iter():
-        if elem.tag == "{dummy}title_original":
-            title_orig = elem.text.strip() if elem.text else None
-        elif elem.tag == "{dummy}description_original":
-            desc_orig = elem.text.strip() if elem.text else None
-
-    return title_orig, desc_orig
+    title = find_text(doc, "deframer:title_original")
+    desc = find_text(doc, "deframer:description_original")
+    return title, desc
