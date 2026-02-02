@@ -232,7 +232,7 @@ class Postgres:
                 feed_id,
                 language,
                 pub_date,
-                categories,
+                category_stems,
                 noun_stems,
                 verb_stems,
                 root_domain
@@ -250,7 +250,7 @@ class Postgres:
                 feed_id = EXCLUDED.feed_id,
                 language = EXCLUDED.language,
                 pub_date = EXCLUDED.pub_date,
-                categories = EXCLUDED.categories,
+                category_stems = EXCLUDED.category_stems,
                 noun_stems = EXCLUDED.noun_stems,
                 verb_stems = EXCLUDED.verb_stems,
                 root_domain = EXCLUDED.root_domain
