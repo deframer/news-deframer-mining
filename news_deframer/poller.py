@@ -2,14 +2,13 @@
 
 from __future__ import annotations
 
+from html.parser import HTMLParser
 import logging
 import signal
 import time
 from types import FrameType
 from typing import Any, Optional, cast
 from uuid import UUID
-
-import xmltodict  # type: ignore
 
 from news_deframer.config import (
     DEFAULT_LOCK_DURATION,
@@ -154,7 +153,7 @@ def _build_task(feed: Feed, item: Item) -> MiningTask:
 
     categories = sorted({*feed.categories, *item.categories})
     domain = feed.root_domain or get_root_domain(feed.url)
-    title, description = _extract_title_and_description(item.content)
+    title, description = _extract_title_and_description(item.content, item_id=item.id)
     return MiningTask(
         feed_id=feed.id,
         feed_url=feed.url,
@@ -168,34 +167,44 @@ def _build_task(feed: Feed, item: Item) -> MiningTask:
     )
 
 
-def _extract_title_and_description(content: str) -> tuple[Optional[str], Optional[str]]:
-    # Wrap content to handle XML fragments (multiple root elements)
-    wrapped = f"<root>{content}</root>"
+class _DeframerParser(HTMLParser):
+    def __init__(self) -> None:
+        super().__init__()
+        self.data: dict[str, Optional[str]] = {
+            "deframer:title_original": None,
+            "deframer:description_original": None,
+        }
+        self._current: Optional[str] = None
+        self._buffer: list[str] = []
 
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, Optional[str]]]) -> None:
+        if tag in self.data:
+            self._current = tag
+            self._buffer = []
+
+    def handle_endtag(self, tag: str) -> None:
+        if tag == self._current:
+            self.data[tag] = "".join(self._buffer).strip() or None
+            self._current = None
+
+    def handle_data(self, data: str) -> None:
+        if self._current:
+            self._buffer.append(data)
+
+
+def _extract_title_and_description(
+    content: str, item_id: Optional[UUID] = None
+) -> tuple[Optional[str], Optional[str]]:
+    parser = _DeframerParser()
     try:
-        # process_namespaces=False ensures we don't fail on unbound prefixes
-        doc = xmltodict.parse(wrapped, process_namespaces=False)
-    except Exception:
+        parser.feed(content)
+        parser.close()
+    except Exception as exc:
+        if item_id:
+            logger.error(
+                "Failed to parse content", extra={"item_id": str(item_id)}, exc_info=exc
+            )
         return None, None
-
-    def find_text(obj: Any, key: str) -> Optional[str]:
-        if isinstance(obj, dict):
-            if key in obj:
-                val = obj[key]
-                if isinstance(val, str):
-                    return val.strip()
-                if isinstance(val, dict):
-                    return val.get("#text", "").strip() or None
-                return None
-            for v in obj.values():
-                if found := find_text(v, key):
-                    return found
-        elif isinstance(obj, list):
-            for item in obj:
-                if found := find_text(item, key):
-                    return found
-        return None
-
-    title = find_text(doc, "deframer:title_original")
-    desc = find_text(doc, "deframer:description_original")
-    return title, desc
+    return parser.data["deframer:title_original"], parser.data[
+        "deframer:description_original"
+    ]
