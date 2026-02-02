@@ -14,7 +14,6 @@ def make_config() -> Config:
         dsn="postgres://local",
         log_level="INFO",
         log_database=False,
-        duck_db_file=":memory:",
     )
 
 

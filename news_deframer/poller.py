@@ -19,22 +19,16 @@ from news_deframer.config import (
 from news_deframer.netutil import get_root_domain
 from news_deframer.postgres import Feed, Item, Postgres
 from news_deframer.miner import Miner, MiningTask
-from news_deframer.duckdb_store import DuckDBStore
 
 logger = logging.getLogger(__name__)
 
 
-def poll(config: Config, store: DuckDBStore | None = None) -> None:
+def poll(config: Config) -> None:
     logger.info("Miner poll started. Press Ctrl+C to exit.")
     logger.debug("Loaded configuration: log level=%s", config.log_level)
 
     repository = Postgres(config)
-    owns_store = False
-    duck_store = store
-    if duck_store is None:
-        duck_store = DuckDBStore(config.duck_db_file)
-        owns_store = True
-    miner = Miner(config, store=duck_store)
+    miner = Miner(config, repository=repository)
 
     previous_sigterm = _install_sigterm_handler()
     try:
@@ -45,16 +39,10 @@ def poll(config: Config, store: DuckDBStore | None = None) -> None:
 
             logger.info("Sleeping... duration=%s", IDLE_SLEEP_TIME)
             time.sleep(IDLE_SLEEP_TIME)
-            if duck_store is not None and duck_store.flush():
-                logger.info("Flushed DuckDB buffer after idle period")
     except KeyboardInterrupt:
         logger.info("Poll interrupted. Exiting.")
     finally:
         _restore_sigterm_handler(previous_sigterm)
-        if duck_store is not None and duck_store.flush():
-            logger.info("Flushed DuckDB buffer before shutdown")
-        if owns_store and duck_store is not None:
-            duck_store.close()
 
 
 def poll_next_feed(
@@ -167,10 +155,10 @@ def _build_task(feed: Feed, item: Item) -> MiningTask:
     domain = feed.root_domain or get_root_domain(feed.url)
     title, description = _extract_title_and_description(item.content)
     return MiningTask(
-        feed_id=str(feed.id),
+        feed_id=feed.id,
         feed_url=feed.url,
         root_domain=domain,
-        item_id=str(item.id),
+        item_id=item.id,
         language=language,
         categories=categories,
         title=title,

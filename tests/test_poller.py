@@ -1,10 +1,9 @@
 from datetime import datetime
-from typing import Iterable, cast
+from typing import cast
 from uuid import UUID, uuid4
 
 from news_deframer.config import Config, DEFAULT_LOCK_DURATION, POLLING_INTERVAL
-from news_deframer.duckdb_store import DuckDBStore, TrendDoc
-from news_deframer.postgres import Feed, Item
+from news_deframer.postgres import Feed, Item, Postgres
 from news_deframer.miner import Miner, MiningTask
 from news_deframer.poller import (
     _extract_title_and_description,
@@ -48,15 +47,9 @@ class DummyRepo:
         pass
 
 
-class StoreStub:
-    def insert_trend_docs(self, docs: Iterable[TrendDoc]) -> None:  # noqa: D401 - simple stub
-        return None
-
-
 class DummyMiner(Miner):
     def __init__(self) -> None:
-        self._store_stub = StoreStub()
-        super().__init__(make_config(), store=cast(DuckDBStore, self._store_stub))
+        super().__init__(make_config(), repository=cast(Postgres, DummyRepo()))
         self.tasks: list[MiningTask] = []
 
     def mine_item(self, task: MiningTask) -> None:
@@ -64,7 +57,7 @@ class DummyMiner(Miner):
 
 
 def make_config() -> Config:
-    return Config(dsn="", log_level="INFO", log_database=False, duck_db_file=":memory:")
+    return Config(dsn="", log_level="INFO", log_database=False)
 
 
 def test_poll_next_feed_returns_false_when_no_feed() -> None:
@@ -83,9 +76,9 @@ def test_poll_next_feed_success_calls_end_update(monkeypatch) -> None:
     def fake_poll_feed(feed: Feed, miner_obj: DummyMiner, repo_obj: DummyRepo) -> None:
         miner_obj.tasks.append(
             MiningTask(
-                feed_id=str(feed.id),
+                feed_id=feed.id,
                 feed_url=feed.url,
-                item_id=str(feed.id),
+                item_id=feed.id,
                 language="en",
                 categories=[],
                 title=None,
@@ -182,7 +175,7 @@ def test_poll_feed_returns_error(monkeypatch, caplog) -> None:
 
     class ExplodingMiner(Miner):
         def __init__(self) -> None:
-            super().__init__(make_config(), store=cast(DuckDBStore, StoreStub()))
+            super().__init__(make_config(), repository=cast(Postgres, DummyRepo()))
 
         def mine_item(self, task: MiningTask) -> None:
             raise RuntimeError("boom")

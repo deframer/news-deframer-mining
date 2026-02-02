@@ -6,20 +6,20 @@ import pytest
 
 from news_deframer import nlp
 from news_deframer.config import Config
-from news_deframer.duckdb_store import DuckDBStore
 from news_deframer.miner import Miner, MiningTask
+from news_deframer.postgres import Postgres, Trend
 
 
-class StoreStub:
+class RepositoryStub:
     def __init__(self):
-        self.inserted = []
+        self.upserted = []
 
-    def insert_trend_docs(self, docs):
-        self.inserted.extend(docs)
+    def upsert_trend(self, trend: Trend):
+        self.upserted.append(trend)
 
 
 def make_config() -> Config:
-    return Config(dsn="", log_level="INFO", log_database=False, duck_db_file=":memory:")
+    return Config(dsn="", log_level="INFO", log_database=False)
 
 
 def test_miner_logs_task(caplog):
@@ -28,12 +28,12 @@ def test_miner_logs_task(caplog):
     except RuntimeError:
         pytest.skip("spaCy English model unavailable")
 
-    store = StoreStub()
-    miner = Miner(make_config(), store=cast(DuckDBStore, store))
+    repo = RepositoryStub()
+    miner = Miner(make_config(), repository=cast(Postgres, repo))
     task = MiningTask(
-        feed_id=str(uuid4()),
+        feed_id=uuid4(),
         feed_url="https://feed",
-        item_id=str(uuid4()),
+        item_id=uuid4(),
         language="en",
         categories=["a"],
         title="Title of Nouns",
@@ -44,13 +44,13 @@ def test_miner_logs_task(caplog):
     with caplog.at_level("INFO"):
         miner.mine_item(task)
 
-    assert len(store.inserted) == 1
-    stored_doc = store.inserted[0]
-    assert stored_doc.item_id == task.item_id
-    assert stored_doc.feed_id == task.feed_id
-    assert stored_doc.language == task.language
-    assert stored_doc.noun_stems == ["nouns", "title", "verb"]
-    assert stored_doc.verb_stems == ["run"]
+    assert len(repo.upserted) == 1
+    stored_trend = repo.upserted[0]
+    assert stored_trend.item_id == task.item_id
+    assert stored_trend.feed_id == task.feed_id
+    assert stored_trend.language == task.language
+    assert stored_trend.noun_stems == ["nouns", "title", "verb"]
+    assert stored_trend.verb_stems == ["run"]
 
 
 @pytest.mark.parametrize(
@@ -91,12 +91,12 @@ def test_miner_stem_extraction_real_models(
     except RuntimeError:
         pytest.skip(f"spaCy model for {language} unavailable")
 
-    store = StoreStub()
-    miner = Miner(make_config(), store=cast(DuckDBStore, store))
+    repo = RepositoryStub()
+    miner = Miner(make_config(), repository=cast(Postgres, repo))
     task = MiningTask(
-        feed_id=str(uuid4()),
+        feed_id=uuid4(),
         feed_url="https://feed",
-        item_id=str(uuid4()),
+        item_id=uuid4(),
         language=language,
         categories=["a"],
         title=title,
@@ -106,7 +106,7 @@ def test_miner_stem_extraction_real_models(
 
     miner.mine_item(task)
 
-    assert len(store.inserted) == 1
-    stored_doc = store.inserted[0]
-    assert stored_doc.noun_stems == expected_nouns
-    assert stored_doc.verb_stems == expected_verbs
+    assert len(repo.upserted) == 1
+    stored_trend = repo.upserted[0]
+    assert stored_trend.noun_stems == expected_nouns
+    assert stored_trend.verb_stems == expected_verbs

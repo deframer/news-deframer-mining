@@ -8,9 +8,6 @@ services:
       - DSN=${DSN:-host=postgres user=deframer password=deframer dbname=deframer port=5432 sslmode=disable}
       - LOG_DATABASE=${LOG_DATABASE:-false}
       - LOG_LEVEL=${LOG_LEVEL:-debug}
-      - DUCK_DB_FILE=${DUCK_DB_FILE:-/data/duckdb/trend_docs.duckdb}
-    volumes:
-      - duckdb-data:/data/duckdb
     networks:
       - infra-net
 
@@ -18,6 +15,3 @@ networks:
   infra-net:
     name: deframer-infra-env-net
     external: true
-
-volumes:
-  duckdb-data:
