@@ -512,28 +512,28 @@ version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
     { name = "beautifulsoup4" },
-    { name = "de-core-news-sm" },
     { name = "en-core-web-sm" },
-    { name = "es-core-news-sm" },
-    { name = "fr-core-news-sm" },
-    { name = "it-core-news-sm" },
-    { name = "nl-core-news-sm" },
     { name = "numpy" },
-    { name = "pl-core-news-sm" },
     { name = "psycopg2-binary" },
-    { name = "pt-core-news-sm" },
     { name = "publicsuffix2" },
     { name = "pyarrow" },
     { name = "pydantic-settings" },
     { name = "python-dotenv" },
-    { name = "ru-core-news-sm" },
     { name = "spacy" },
 ]
 
 [package.dev-dependencies]
 dev = [
+    { name = "de-core-news-sm" },
+    { name = "es-core-news-sm" },
+    { name = "fr-core-news-sm" },
+    { name = "it-core-news-sm" },
     { name = "mypy" },
+    { name = "nl-core-news-sm" },
+    { name = "pl-core-news-sm" },
+    { name = "pt-core-news-sm" },
     { name = "pytest" },
+    { name = "ru-core-news-sm" },
     { name = "ruff" },
     { name = "types-psycopg2" },
 ]
@@ -541,28 +541,28 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "beautifulsoup4" },
-    { name = "de-core-news-sm", url = "https://github.com/explosion/spacy-models/releases/download/de_core_news_sm-3.8.0/de_core_news_sm-3.8.0-py3-none-any.whl" },
     { name = "en-core-web-sm", url = "https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0-py3-none-any.whl" },
-    { name = "es-core-news-sm", url = "https://github.com/explosion/spacy-models/releases/download/es_core_news_sm-3.8.0/es_core_news_sm-3.8.0-py3-none-any.whl" },
-    { name = "fr-core-news-sm", url = "https://github.com/explosion/spacy-models/releases/download/fr_core_news_sm-3.8.0/fr_core_news_sm-3.8.0-py3-none-any.whl" },
-    { name = "it-core-news-sm", url = "https://github.com/explosion/spacy-models/releases/download/it_core_news_sm-3.8.0/it_core_news_sm-3.8.0-py3-none-any.whl" },
-    { name = "nl-core-news-sm", url = "https://github.com/explosion/spacy-models/releases/download/nl_core_news_sm-3.8.0/nl_core_news_sm-3.8.0-py3-none-any.whl" },
     { name = "numpy", specifier = ">=1.24,<2.0" },
-    { name = "pl-core-news-sm", url = "https://github.com/explosion/spacy-models/releases/download/pl_core_news_sm-3.8.0/pl_core_news_sm-3.8.0-py3-none-any.whl" },
     { name = "psycopg2-binary" },
-    { name = "pt-core-news-sm", url = "https://github.com/explosion/spacy-models/releases/download/pt_core_news_sm-3.8.0/pt_core_news_sm-3.8.0-py3-none-any.whl" },
     { name = "publicsuffix2" },
     { name = "pyarrow" },
     { name = "pydantic-settings" },
     { name = "python-dotenv" },
-    { name = "ru-core-news-sm", url = "https://github.com/explosion/spacy-models/releases/download/ru_core_news_sm-3.8.0/ru_core_news_sm-3.8.0-py3-none-any.whl" },
     { name = "spacy", specifier = ">=3.8.0,<3.10.0" },
 ]
 
 [package.metadata.requires-dev]
 dev = [
+    { name = "de-core-news-sm", url = "https://github.com/explosion/spacy-models/releases/download/de_core_news_sm-3.8.0/de_core_news_sm-3.8.0-py3-none-any.whl" },
+    { name = "es-core-news-sm", url = "https://github.com/explosion/spacy-models/releases/download/es_core_news_sm-3.8.0/es_core_news_sm-3.8.0-py3-none-any.whl" },
+    { name = "fr-core-news-sm", url = "https://github.com/explosion/spacy-models/releases/download/fr_core_news_sm-3.8.0/fr_core_news_sm-3.8.0-py3-none-any.whl" },
+    { name = "it-core-news-sm", url = "https://github.com/explosion/spacy-models/releases/download/it_core_news_sm-3.8.0/it_core_news_sm-3.8.0-py3-none-any.whl" },
     { name = "mypy" },
+    { name = "nl-core-news-sm", url = "https://github.com/explosion/spacy-models/releases/download/nl_core_news_sm-3.8.0/nl_core_news_sm-3.8.0-py3-none-any.whl" },
+    { name = "pl-core-news-sm", url = "https://github.com/explosion/spacy-models/releases/download/pl_core_news_sm-3.8.0/pl_core_news_sm-3.8.0-py3-none-any.whl" },
+    { name = "pt-core-news-sm", url = "https://github.com/explosion/spacy-models/releases/download/pt_core_news_sm-3.8.0/pt_core_news_sm-3.8.0-py3-none-any.whl" },
     { name = "pytest" },
+    { name = "ru-core-news-sm", url = "https://github.com/explosion/spacy-models/releases/download/ru_core_news_sm-3.8.0/ru_core_news_sm-3.8.0-py3-none-any.whl" },
     { name = "ruff" },
     { name = "types-psycopg2" },
 ]

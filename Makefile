@@ -1,4 +1,4 @@
-.PHONY: all build clean test help lint format type-check fix start stop down logs zap run sync duckdb-ui FORCE
+.PHONY: all build clean test help lint format type-check fix start stop down logs zap run sync duckdb-ui FORCE download-models
 
 APP_NAME := miner
 DOCKER_REPO := ghcr.io/deframer/news-deframer-mining
@@ -30,6 +30,11 @@ zap: down start
 
 miner:
 	uv run python -m news_deframer.cli.miner
+
+# additional languages of the spaCy models - https://github.com/explosion/spacy-models
+# export SPACY_MODELS="sl uk es"
+download-models:
+	uv run python -m news_deframer.cli.download_models
 
 docker-build:
 	docker build -t $(DOCKER_REPO)/$(APP_NAME):latest -f build/package/mining/Dockerfile .

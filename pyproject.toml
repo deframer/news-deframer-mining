@@ -13,7 +13,19 @@ dependencies = [
     "python-dotenv",
     "publicsuffix2",
     "spacy>=3.8.0,<3.10.0",
-    "en-core-web-sm @ https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0-py3-none-any.whl",
+    "en-core-web-sm @ https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0-py3-none-any.whl"
+]
+
+[project.scripts]
+miner-cli = "news_deframer.cli.miner:main"
+download-models = "news_deframer.models:install_models"
+
+[dependency-groups]
+dev = [
+    "ruff",
+    "pytest",
+    "mypy",
+    "types-psycopg2",
     "de-core-news-sm @ https://github.com/explosion/spacy-models/releases/download/de_core_news_sm-3.8.0/de_core_news_sm-3.8.0-py3-none-any.whl",
     "es-core-news-sm @ https://github.com/explosion/spacy-models/releases/download/es_core_news_sm-3.8.0/es_core_news_sm-3.8.0-py3-none-any.whl",
     "fr-core-news-sm @ https://github.com/explosion/spacy-models/releases/download/fr_core_news_sm-3.8.0/fr_core_news_sm-3.8.0-py3-none-any.whl",
@@ -22,17 +34,6 @@ dependencies = [
     "nl-core-news-sm @ https://github.com/explosion/spacy-models/releases/download/nl_core_news_sm-3.8.0/nl_core_news_sm-3.8.0-py3-none-any.whl",
     "pl-core-news-sm @ https://github.com/explosion/spacy-models/releases/download/pl_core_news_sm-3.8.0/pl_core_news_sm-3.8.0-py3-none-any.whl",
     "ru-core-news-sm @ https://github.com/explosion/spacy-models/releases/download/ru_core_news_sm-3.8.0/ru_core_news_sm-3.8.0-py3-none-any.whl"
-]
-
-[project.scripts]
-miner-cli = "news_deframer.cli.miner:main"
-
-[dependency-groups]
-dev = [
-    "ruff",
-    "pytest",
-    "mypy",
-    "types-psycopg2",
 ]
 
 [tool.pytest.ini_options]
