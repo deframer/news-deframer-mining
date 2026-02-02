@@ -1,11 +1,14 @@
 SET duckdb.force_execution = true;
 
 SET SESSION "vars.last" = '30 days';
-SET SESSION "vars.top" = 10;
+SET SESSION "vars.top" = 5;
 
---SET SESSION "vars.domain_a" = 'spiegel.de';
-SET SESSION "vars.domain_a" = 'nius.de';
+SET SESSION "vars.domain_a" = 'spiegel.de';
+--SET SESSION "vars.domain_b" = 'nius.de';
+--SET SESSION "vars.domain_a" = 'nius.de';
 SET SESSION "vars.domain_b" = 'tagesschau.de';
+--SET SESSION "vars.domain_a" = 'bbc.com';
+--SET SESSION "vars.domain_b" = 'nytimes.com';
 
 -- Parameters
 WITH params AS (
@@ -77,16 +80,16 @@ ranked_verbs_b AS (
     GROUP BY verb
 ),
 set_nouns_a AS (
-    SELECT noun, noun_count FROM ranked_nouns_a WHERE rank <= (SELECT result_limit * 5 FROM params)
+    SELECT noun, noun_count FROM ranked_nouns_a WHERE rank <= (SELECT result_limit * 10 FROM params)
 ),
 set_nouns_b AS (
-    SELECT noun, noun_count FROM ranked_nouns_b WHERE rank <= (SELECT result_limit * 5 FROM params)
+    SELECT noun, noun_count FROM ranked_nouns_b WHERE rank <= (SELECT result_limit * 10 FROM params)
 ),
 set_verbs_a AS (
-    SELECT verb, verb_count FROM ranked_verbs_a WHERE rank <= (SELECT result_limit * 5 FROM params)
+    SELECT verb, verb_count FROM ranked_verbs_a WHERE rank <= (SELECT result_limit * 10 FROM params)
 ),
 set_verbs_b AS (
-    SELECT verb, verb_count FROM ranked_verbs_b WHERE rank <= (SELECT result_limit * 5 FROM params)
+    SELECT verb, verb_count FROM ranked_verbs_b WHERE rank <= (SELECT result_limit * 10 FROM params)
 ),
 intersection_nouns AS (
     SELECT
