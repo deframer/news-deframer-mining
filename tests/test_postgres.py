@@ -128,3 +128,30 @@ def test_fetch_pending_items(monkeypatch):
     assert items[0].language == "es"
     assert items[0].pub_date == datetime(2024, 6, 1, 12, 0, 0)
     assert items[0].content == "raw content"
+
+
+def test_upsert_trend(monkeypatch):
+    cursor = CursorStub()
+    patch_connect(monkeypatch, cursor)
+    repo = postgres_module.Postgres(make_config())
+
+    trend = postgres_module.Trend(
+        item_id=uuid4(),
+        feed_id=uuid4(),
+        language="en",
+        pub_date=datetime(2024, 1, 1, 12, 0, 0),
+        root_domain="example.com",
+        category_stems=["cat1"],
+        noun_stems=["noun1"],
+        verb_stems=["verb1"],
+    )
+
+    repo.upsert_trend(trend)
+
+    assert len(cursor.execute_calls) == 1
+    sql, params = cursor.execute_calls[0]
+    assert "INSERT INTO trends" in sql
+    assert params["item_id"] == trend.item_id
+    assert params["feed_id"] == trend.feed_id
+    assert params["language"] == "en"
+    assert params["category_stems"] == ["cat1"]

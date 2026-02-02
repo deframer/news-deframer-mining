@@ -34,6 +34,18 @@ class Item:
     language: Optional[str] = None
 
 
+@dataclass
+class Trend:
+    item_id: UUID
+    feed_id: UUID
+    language: str
+    pub_date: datetime
+    root_domain: str
+    category_stems: list[str] = field(default_factory=list)
+    noun_stems: list[str] = field(default_factory=list)
+    verb_stems: list[str] = field(default_factory=list)
+
+
 register_uuid()
 
 logger = logging.getLogger(__name__)
@@ -211,6 +223,55 @@ class Postgres:
                         (chunk,),
                     )
         self._logger.debug("Marked %s items as mined", len(item_ids))
+
+    def upsert_trend(self, trend: Trend) -> None:
+        """Insert or update a trend record."""
+        sql = """
+            INSERT INTO trends (
+                item_id,
+                feed_id,
+                language,
+                pub_date,
+                categories,
+                noun_stems,
+                verb_stems,
+                root_domain
+            ) VALUES (
+                %(item_id)s,
+                %(feed_id)s,
+                %(language)s,
+                %(pub_date)s,
+                %(category_stems)s,
+                %(noun_stems)s,
+                %(verb_stems)s,
+                %(root_domain)s
+            )
+            ON CONFLICT (item_id) DO UPDATE SET
+                feed_id = EXCLUDED.feed_id,
+                language = EXCLUDED.language,
+                pub_date = EXCLUDED.pub_date,
+                categories = EXCLUDED.categories,
+                noun_stems = EXCLUDED.noun_stems,
+                verb_stems = EXCLUDED.verb_stems,
+                root_domain = EXCLUDED.root_domain
+        """
+
+        with psycopg2.connect(self.config.dsn) as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    sql,
+                    {
+                        "item_id": trend.item_id,
+                        "feed_id": trend.feed_id,
+                        "language": trend.language,
+                        "pub_date": trend.pub_date,
+                        "category_stems": trend.category_stems,
+                        "noun_stems": trend.noun_stems,
+                        "verb_stems": trend.verb_stems,
+                        "root_domain": trend.root_domain,
+                    },
+                )
+        self._logger.debug("Upserted trend for item %s", trend.item_id)
 
 
 def _normalize_language_value(value: Optional[str]) -> Optional[str]:
