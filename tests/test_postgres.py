@@ -14,7 +14,6 @@ def make_config() -> Config:
         dsn="postgres://local",
         log_level="INFO",
         log_database=False,
-        duck_db_file=":memory:",
     )
 
 
@@ -128,3 +127,62 @@ def test_fetch_pending_items(monkeypatch):
     assert items[0].language == "es"
     assert items[0].pub_date == datetime(2024, 6, 1, 12, 0, 0)
     assert items[0].content == "raw content"
+
+
+def test_upsert_trends(monkeypatch):
+    cursor = CursorStub()
+    patch_connect(monkeypatch, cursor)
+    repo = postgres_module.Postgres(make_config())
+
+    executed_values = []
+    monkeypatch.setattr(
+        postgres_module,
+        "execute_values",
+        lambda cur, sql, args, **kwargs: executed_values.append((sql, args)),
+    )
+
+    trend = postgres_module.Trend(
+        item_id=uuid4(),
+        feed_id=uuid4(),
+        language="en",
+        pub_date=datetime(2024, 1, 1, 12, 0, 0),
+        root_domain="example.com",
+        category_stems=["cat1"],
+        noun_stems=["noun1"],
+        verb_stems=["verb1"],
+    )
+
+    repo.upsert_trends([trend])
+
+    assert len(executed_values) == 1
+    sql, args_list = executed_values[0]
+    assert "INSERT INTO trends" in sql
+    assert "VALUES %s" in sql
+    assert len(args_list) == 1
+    tup = args_list[0]
+    assert tup[0] == trend.item_id
+    assert tup[1] == trend.feed_id
+    assert tup[2] == "en"
+    assert tup[4] == ["cat1"]
+
+
+def test_mark_items_mined(monkeypatch):
+    cursor = CursorStub()
+    patch_connect(monkeypatch, cursor)
+    repo = postgres_module.Postgres(make_config())
+
+    executed_values = []
+    monkeypatch.setattr(
+        postgres_module,
+        "execute_values",
+        lambda cur, sql, args, **kwargs: executed_values.append((sql, args)),
+    )
+
+    item_ids = [uuid4(), uuid4()]
+    repo.mark_items_mined(item_ids)
+
+    assert len(executed_values) == 1
+    sql, args_list = executed_values[0]
+    assert "UPDATE items AS t" in sql
+    assert len(args_list) == 2
+    assert args_list[0] == (item_ids[0],)

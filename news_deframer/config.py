@@ -13,16 +13,12 @@ IDLE_SLEEP_TIME = 10  # 10 seconds
 # Default lock duration for a miner poll
 DEFAULT_LOCK_DURATION = 5 * 60  # 5 minutes
 
-# Number of trend documents buffered in memory before flushing to DuckDB
-TREND_DOC_BUFFER_SIZE = 32
-
 
 @dataclass
 class Config:
     dsn: str
     log_level: str
     log_database: bool
-    duck_db_file: str
 
     @classmethod
     def load(cls) -> "Config":
@@ -40,5 +36,4 @@ class Config:
             dsn=os.getenv("DSN", ""),
             log_level=os.getenv("LOG_LEVEL", "INFO"),
             log_database=os.getenv("LOG_DATABASE", "false").lower() == "true",
-            duck_db_file=os.getenv("DUCK_DB_FILE", "./trend_docs.duckdb"),
         )

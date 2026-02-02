@@ -14,9 +14,6 @@ env/
 
 # Environment Variables
 .env
-*.duckdb
-*.duckdb.wal
-
 
 # Testing & Linting
 .pytest_cache/

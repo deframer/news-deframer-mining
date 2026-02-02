@@ -12,20 +12,8 @@ def test_main_runs_poll(monkeypatch):
     monkeypatch.setattr("news_deframer.cli.miner.Config.load", lambda: fake_config)
     monkeypatch.setattr("news_deframer.cli.miner.configure_logging", lambda level: None)
 
-    dummy_store = MagicMock()
-
-    class StoreCtx:
-        def __enter__(self):
-            return dummy_store
-
-        def __exit__(self, exc_type, exc, tb):
-            return False
-
-    monkeypatch.setattr("news_deframer.cli.miner.DuckDBStore", lambda path: StoreCtx())
-
-    def fake_poll(config, store=None):
+    def fake_poll(config):
         called["config"] = config
-        called["store"] = store
 
     monkeypatch.setattr("news_deframer.cli.miner.poller_module.poll", fake_poll)
 
@@ -33,4 +21,3 @@ def test_main_runs_poll(monkeypatch):
 
     assert exit_code == 0
     assert called["config"] is fake_config
-    assert called["store"] is dummy_store
