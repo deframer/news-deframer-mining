@@ -67,9 +67,9 @@ class Miner:
             feed_id=task.feed_id,
             language=task.language,
             pub_date=task.pub_date,
-            root_domain=task.root_domain,
             category_stems=category_stems,
             noun_stems=list(noun_stems),
             verb_stems=list(verb_stems),
+            root_domain=task.root_domain,
         )
         self._repository.upsert_trends([trend])
