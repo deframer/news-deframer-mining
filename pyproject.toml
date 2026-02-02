@@ -3,7 +3,7 @@ name = "news-deframer-mining"
 version = "0.1.0"
 description = "News Deframer Trend Mining Modules"
 readme = "README.md"
-requires-python = ">=3.14"
+requires-python = ">=3.12"
 dependencies = [
     "beautifulsoup4",
     "numpy>=2.0,<3.0",

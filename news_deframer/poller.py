@@ -60,17 +60,15 @@ def poll_next_feed(
     if feed is None:
         return False
 
-    poll_error: Exception | None = None
     try:
         poll_feed(feed, miner, repo)
     except Exception as exc:  # pragma: no cover - mining failure path
-        poll_error = exc
         logger.error(
             "Feed mining failed", extra={"feed_id": str(feed.id)}, exc_info=exc
         )
 
     try:
-        repo.end_mine_update(feed.id, poll_error, POLLING_INTERVAL)
+        repo.end_mine_update(feed.id, POLLING_INTERVAL)
     except Exception as exc:  # pragma: no cover - db failure path
         logger.error(
             "Failed to end feed update",

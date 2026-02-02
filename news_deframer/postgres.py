@@ -56,10 +56,16 @@ class Postgres:
 
     def __init__(self, config: Config):
         self.config = config
+        self._conn = None
         if config.log_database:
             self._logger: logging.Logger | SilentLogger = logger.getChild("Postgres")
         else:
             self._logger = SilentLogger()
+
+    def _get_connection(self):
+        if self._conn is None or self._conn.closed:
+            self._conn = psycopg2.connect(self.config.dsn)
+        return self._conn
 
     def begin_mine_update(self, lock_duration: int) -> Optional[Feed]:
         """Attempt to lock the next feed ready for mining."""
@@ -85,7 +91,8 @@ class Postgres:
             WHERE id = %s
         """
 
-        with psycopg2.connect(self.config.dsn) as conn:
+        conn = self._get_connection()
+        with conn:
             with conn.cursor() as cur:
                 cur.execute(select_sql)
                 row = cur.fetchone()
@@ -112,14 +119,12 @@ class Postgres:
                     root_domain=root_domain,
                 )
 
-    def end_mine_update(
-        self, feed_id: UUID, error: Exception | None, retry_interval: int
-    ) -> None:
+    def end_mine_update(self, feed_id: UUID, polling_interval: int) -> None:
         """Release the lock and update scheduling metadata."""
-        error_text = str(error) if error else None
-        retry_seconds = max(int(retry_interval), 0)
+        polling_seconds = max(int(polling_interval), 0)
 
-        with psycopg2.connect(self.config.dsn) as conn:
+        conn = self._get_connection()
+        with conn:
             with conn.cursor() as cur:
                 cur.execute(
                     "SELECT enabled, mining, url FROM feeds WHERE id = %s",
@@ -131,29 +136,15 @@ class Postgres:
                 feed_url = str(row[2]) if row and row[2] is not None else None
                 feed_label = feed_url or str(feed_id)
 
-                if error_text is not None:
-                    update_sql = """
-                        UPDATE feed_schedules
-                        SET mining_locked_until = NULL,
-                            updated_at = NOW(),
-                            mining_error = %s,
-                            next_mining_at = NULL
-                        WHERE id = %s
-                    """
-                    cur.execute(update_sql, (error_text, feed_id))
-                    self._logger.debug("Marked feed %s mining error", feed_label)
-                    return
-
                 if enabled and mining:
                     update_sql = """
                         UPDATE feed_schedules
                         SET mining_locked_until = NULL,
                             updated_at = NOW(),
-                            mining_error = NULL,
                             next_mining_at = NOW() + (%s * INTERVAL '1 second')
                         WHERE id = %s
                     """
-                    cur.execute(update_sql, (retry_seconds, feed_id))
+                    cur.execute(update_sql, (polling_seconds, feed_id))
                     self._logger.debug(
                         "Feed %s mining complete; scheduled next run", feed_label
                     )
@@ -162,7 +153,6 @@ class Postgres:
                         UPDATE feed_schedules
                         SET mining_locked_until = NULL,
                             updated_at = NOW(),
-                            mining_error = NULL,
                             next_mining_at = NULL
                         WHERE id = %s
                     """
@@ -188,7 +178,8 @@ class Postgres:
               AND mining_done_at IS NULL
         """
 
-        with psycopg2.connect(self.config.dsn) as conn:
+        conn = self._get_connection()
+        with conn:
             with conn.cursor() as cur:
                 cur.execute(sql, (feed_id,))
                 rows = cur.fetchall()
@@ -221,7 +212,8 @@ class Postgres:
         """
         values = [(id,) for id in item_ids]
 
-        with psycopg2.connect(self.config.dsn) as conn:
+        conn = self._get_connection()
+        with conn:
             with conn.cursor() as cur:
                 execute_values(cur, sql, values)
         self._logger.debug("Marked %s items as mined", len(item_ids))
@@ -266,7 +258,8 @@ class Postgres:
             for t in trends
         ]
 
-        with psycopg2.connect(self.config.dsn) as conn:
+        conn = self._get_connection()
+        with conn:
             with conn.cursor() as cur:
                 execute_values(cur, sql, values)
         self._logger.debug("Upserted %s trends", len(trends))
