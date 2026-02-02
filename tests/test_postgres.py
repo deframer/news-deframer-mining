@@ -138,7 +138,7 @@ def test_upsert_trends(monkeypatch):
     monkeypatch.setattr(
         postgres_module,
         "execute_values",
-        lambda cur, sql, args, **kwargs: executed_values.append((sql, args))
+        lambda cur, sql, args, **kwargs: executed_values.append((sql, args)),
     )
 
     trend = postgres_module.Trend(
