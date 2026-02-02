@@ -64,7 +64,9 @@ def install_models():
                 break
 
         if not found_url:
-            print(f"Could not find a valid spaCy model for '{lang}' (checked {candidates}).")
+            print(
+                f"Could not find a valid spaCy model for '{lang}' (checked {candidates})."
+            )
             sys.exit(1)
 
         if not pip_checked:
