@@ -88,7 +88,6 @@ def poll_feed(feed: Feed, miner: Miner, repository: Any) -> Optional[Exception]:
         return None
 
     logger.info("Fetched %s pending items for feed %s", len(items), feed_label)
-    processed_ids: list[UUID] = []
     for item in items:
         try:
             task = _build_task(feed, item)
@@ -109,10 +108,6 @@ def poll_feed(feed: Feed, miner: Miner, repository: Any) -> Optional[Exception]:
                 exc_info=exc,
             )
             return exc
-        else:
-            processed_ids.append(item.id)
-
-    repository.mark_items_mined(processed_ids)
 
     return None
 

@@ -167,15 +167,16 @@ class Postgres:
         """Fetch items for the feed that still need mining."""
         sql = """
             SELECT
-                id,
-                feed_id,
-                categories,
-                language,
-                pub_date,
-                content
-            FROM items
-            WHERE feed_id = %s
-              AND mining_done_at IS NULL
+                i.id,
+                i.feed_id,
+                i.categories,
+                i.language,
+                i.pub_date,
+                i.content
+            FROM items i
+            LEFT JOIN trends t ON t.item_id = i.id
+            WHERE i.feed_id = %s
+              AND t.item_id IS NULL
         """
 
         conn = self._get_connection()
@@ -199,24 +200,6 @@ class Postgres:
                     "Fetched %s pending items for feed %s", len(items), label
                 )
                 return items
-
-    def mark_items_mined(self, item_ids: list[UUID]) -> None:
-        if not item_ids:
-            return
-
-        sql = """
-            UPDATE items AS t
-            SET mining_done_at = NOW()
-            FROM (VALUES %s) AS v(id)
-            WHERE t.id = v.id::uuid
-        """
-        values = [(id,) for id in item_ids]
-
-        conn = self._get_connection()
-        with conn:
-            with conn.cursor() as cur:
-                execute_values(cur, sql, values)
-        self._logger.debug("Marked %s items as mined", len(item_ids))
 
     def upsert_trends(self, trends: list[Trend]) -> None:
         """Insert or update multiple trend records in batch."""

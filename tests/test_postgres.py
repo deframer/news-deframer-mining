@@ -164,25 +164,3 @@ def test_upsert_trends(monkeypatch):
     assert tup[1] == trend.feed_id
     assert tup[2] == "en"
     assert tup[4] == ["cat1"]
-
-
-def test_mark_items_mined(monkeypatch):
-    cursor = CursorStub()
-    patch_connect(monkeypatch, cursor)
-    repo = postgres_module.Postgres(make_config())
-
-    executed_values = []
-    monkeypatch.setattr(
-        postgres_module,
-        "execute_values",
-        lambda cur, sql, args, **kwargs: executed_values.append((sql, args)),
-    )
-
-    item_ids = [uuid4(), uuid4()]
-    repo.mark_items_mined(item_ids)
-
-    assert len(executed_values) == 1
-    sql, args_list = executed_values[0]
-    assert "UPDATE items AS t" in sql
-    assert len(args_list) == 2
-    assert args_list[0] == (item_ids[0],)

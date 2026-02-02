@@ -41,9 +41,6 @@ class DummyRepo:
         self.fetched_for.append(str(feed_id))
         return list(self.pending_items)
 
-    def mark_items_mined(self, item_ids: list[UUID]) -> None:  # noqa: D401 - stub
-        pass
-
 
 class DummyMiner(Miner):
     def __init__(self) -> None:
