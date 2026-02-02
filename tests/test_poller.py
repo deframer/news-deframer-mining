@@ -224,3 +224,15 @@ def test_extract_title_and_description_handles_malformed_xml() -> None:
     title, description = _extract_title_and_description(content)
     assert title is None
     assert description is None
+
+
+def test_extract_title_and_description_with_unknown_namespaces() -> None:
+    content = """<item>
+  <deframer:title_original>Extracted Title</deframer:title_original>
+  <deframer:description_original>Extracted Description</deframer:description_original>
+  <wfw:commentRss>http://example.com/feed</wfw:commentRss>
+  <slash:comments>10</slash:comments>
+</item>"""
+    title, description = _extract_title_and_description(content)
+    assert title == "Extracted Title"
+    assert description == "Extracted Description"
