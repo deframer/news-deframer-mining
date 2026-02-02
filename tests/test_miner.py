@@ -22,7 +22,7 @@ def make_config() -> Config:
     return Config(dsn="", log_level="INFO", log_database=False)
 
 
-def test_miner_logs_task(caplog):
+def test_mine_item_upserts_trend():
     try:
         nlp._get_spacy_model("en")
     except RuntimeError:
@@ -37,13 +37,12 @@ def test_miner_logs_task(caplog):
         language="en",
         categories=["a"],
         title="Title of Nouns",
-        description="Running verbs now",
+        description="The verbs run now",
         pub_date=datetime(2024, 1, 1, 12, 0, 0),
         root_domain="example.com",
     )
 
-    with caplog.at_level("INFO"):
-        miner.mine_item(task)
+    miner.mine_item(task)
 
     assert len(repo.upserted) == 1
     stored_trend = repo.upserted[0]

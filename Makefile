@@ -1,12 +1,10 @@
-.PHONY: all build clean test help lint format type-check fix start stop down logs zap run sync duckdb-ui FORCE
+.PHONY: all build clean test help lint format type-check fix start stop down logs zap run sync duckdb-ui FORCE download-models
 
 APP_NAME := miner
-DOCKER_REPO := deframer
+DOCKER_REPO := ghcr.io/deframer/news-deframer-mining
 DOCKER_COMPOSE_FILE ?= docker-compose.yml
 COMPOSE_ENV_FILE ?= .env-compose
 DOCKER_ENV_FLAG := $(if $(wildcard $(COMPOSE_ENV_FILE)),--env-file $(COMPOSE_ENV_FILE),--env-file /dev/null)
-
-DB_IMAGE := pgduckdb/pgduckdb:18-main
 
 ifneq ("$(wildcard .env)","")
   include .env
@@ -32,6 +30,11 @@ zap: down start
 
 miner:
 	uv run python -m news_deframer.cli.miner
+
+# additional languages of the spaCy models - https://github.com/explosion/spacy-models
+# export SPACY_MODELS="sl uk es"
+download-models:
+	uv run python -m news_deframer.cli.download_models
 
 docker-build:
 	docker build -t $(DOCKER_REPO)/$(APP_NAME):latest -f build/package/mining/Dockerfile .
