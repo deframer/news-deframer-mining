@@ -1,5 +1,6 @@
 .git
 .gitignore
+.github
 .env
 .env.*
 .venv
@@ -17,3 +18,5 @@ dist
 .ruff_cache
 .coverage
 htmlcov
+.ruff_cache
+.vscode
