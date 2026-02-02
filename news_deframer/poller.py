@@ -60,17 +60,15 @@ def poll_next_feed(
     if feed is None:
         return False
 
-    poll_error: Exception | None = None
     try:
         poll_feed(feed, miner, repo)
     except Exception as exc:  # pragma: no cover - mining failure path
-        poll_error = exc
         logger.error(
             "Feed mining failed", extra={"feed_id": str(feed.id)}, exc_info=exc
         )
 
     try:
-        repo.end_mine_update(feed.id, poll_error, POLLING_INTERVAL)
+        repo.end_mine_update(feed.id, POLLING_INTERVAL)
     except Exception as exc:  # pragma: no cover - db failure path
         logger.error(
             "Failed to end feed update",
@@ -90,7 +88,6 @@ def poll_feed(feed: Feed, miner: Miner, repository: Any) -> Optional[Exception]:
         return None
 
     logger.info("Fetched %s pending items for feed %s", len(items), feed_label)
-    processed_ids: list[UUID] = []
     for item in items:
         try:
             task = _build_task(feed, item)
@@ -111,10 +108,6 @@ def poll_feed(feed: Feed, miner: Miner, repository: Any) -> Optional[Exception]:
                 exc_info=exc,
             )
             return exc
-        else:
-            processed_ids.append(item.id)
-
-    repository.mark_items_mined(processed_ids)
 
     return None
 

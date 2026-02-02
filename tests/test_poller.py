@@ -22,7 +22,7 @@ class DummyRepo:
         self.feed = feed
         self.fail_begin = fail_begin
         self.pending_items = list(pending_items) if pending_items is not None else []
-        self.end_calls: list[tuple[str, Exception | None, int]] = []
+        self.end_calls: list[tuple[str, int]] = []
         self.lock_duration: int | None = None
         self.fetched_for: list[str] = []
 
@@ -32,19 +32,14 @@ class DummyRepo:
             raise RuntimeError("boom")
         return self.feed
 
-    def end_mine_update(
-        self, feed_id: UUID, error: Exception | None, retry_interval: int
-    ) -> None:
-        self.end_calls.append((str(feed_id), error, retry_interval))
+    def end_mine_update(self, feed_id: UUID, polling_interval: int) -> None:
+        self.end_calls.append((str(feed_id), polling_interval))
 
     def fetch_pending_items(
         self, feed_id: UUID, feed_url: str | None = None
     ) -> list[Item]:
         self.fetched_for.append(str(feed_id))
         return list(self.pending_items)
-
-    def mark_items_mined(self, item_ids: list[UUID]) -> None:  # noqa: D401 - stub
-        pass
 
 
 class DummyMiner(Miner):
@@ -91,7 +86,7 @@ def test_poll_next_feed_success_calls_end_update(monkeypatch) -> None:
     monkeypatch.setattr("news_deframer.poller.poll_feed", fake_poll_feed)
 
     assert poll_next_feed(make_config(), miner, repo) is True
-    assert repo.end_calls == [(str(feed_id), None, POLLING_INTERVAL)]
+    assert repo.end_calls == [(str(feed_id), POLLING_INTERVAL)]
 
 
 def test_poll_next_feed_passes_errors(monkeypatch) -> None:
@@ -106,9 +101,8 @@ def test_poll_next_feed_passes_errors(monkeypatch) -> None:
 
     assert poll_next_feed(make_config(), miner, repo) is True
     assert len(repo.end_calls) == 1
-    feed_id_value, err, retry = repo.end_calls[0]
+    feed_id_value, retry = repo.end_calls[0]
     assert feed_id_value == str(feed_id)
-    assert isinstance(err, ValueError)
     assert retry == POLLING_INTERVAL
 
 
