@@ -1,12 +1,10 @@
 .PHONY: all build clean test help lint format type-check fix start stop down logs zap run sync duckdb-ui FORCE
 
 APP_NAME := miner
-DOCKER_REPO := deframer
+DOCKER_REPO := ghcr.io/deframer/news-deframer-mining
 DOCKER_COMPOSE_FILE ?= docker-compose.yml
 COMPOSE_ENV_FILE ?= .env-compose
 DOCKER_ENV_FLAG := $(if $(wildcard $(COMPOSE_ENV_FILE)),--env-file $(COMPOSE_ENV_FILE),--env-file /dev/null)
-
-DB_IMAGE := pgduckdb/pgduckdb:18-main
 
 ifneq ("$(wildcard .env)","")
   include .env
