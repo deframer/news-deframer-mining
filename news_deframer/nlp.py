@@ -19,12 +19,10 @@ else:  # pragma: no cover - runtime fallback
 
 
 def extract_stems(
-    content: str,
-    language: str,
-    *,
-    title: Optional[str] = None,
-    description: Optional[str] = None,
+    content: str, language: str
 ) -> tuple[Sequence[str], Sequence[str], Sequence[str]]:
+    # TODO: you must implement Named Entity Recognition (NER) as described in Chapter 12.3.2 of the thesis
+    # Filter: Only keep meaningful entities (Person, Org, GPE/Location)
     """
     Return noun, verb, and adjective lemmas for ``content`` using spaCy.
 
