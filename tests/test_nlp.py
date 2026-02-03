@@ -24,6 +24,7 @@ def test_extract_stems_uses_spacy_when_available(monkeypatch) -> None:
             self.lemma_ = lemma
             self.pos_ = pos
             self.is_alpha = True
+            self.is_stop = False
 
     class DummyModel:
         def __call__(self, _: str):
@@ -37,10 +38,11 @@ def test_extract_stems_uses_spacy_when_available(monkeypatch) -> None:
     monkeypatch.setattr(nlp, "_get_spacy_model", lambda _: DummyModel())
     monkeypatch.setattr(nlp, "_get_stopwords", lambda _lang: frozenset())
 
-    nouns, verbs = nlp.extract_stems("Cities walk", "en")
+    nouns, verbs, adjs = nlp.extract_stems("Cities walk", "en")
 
     assert nouns == ["city", "people"]
     assert verbs == ["walk"]
+    assert adjs == ["ignored"]
 
 
 def test_extract_stems_returns_unique_sorted_lemmas(monkeypatch) -> None:
@@ -49,6 +51,7 @@ def test_extract_stems_returns_unique_sorted_lemmas(monkeypatch) -> None:
             self.lemma_ = lemma
             self.pos_ = pos
             self.is_alpha = True
+            self.is_stop = False
 
     class DummyModel:
         def __call__(self, _: str):
@@ -65,7 +68,7 @@ def test_extract_stems_returns_unique_sorted_lemmas(monkeypatch) -> None:
     monkeypatch.setattr(nlp, "_get_spacy_model", lambda _: DummyModel())
     monkeypatch.setattr(nlp, "_get_stopwords", lambda _lang: frozenset())
 
-    nouns, verbs = nlp.extract_stems("content", "en")
+    nouns, verbs, _ = nlp.extract_stems("content", "en")
 
     assert nouns == ["apple", "banana", "carrot"]
     assert verbs == ["jog", "run"]
@@ -77,7 +80,7 @@ def test_extract_stems_with_real_english_model() -> None:
     except RuntimeError:
         pytest.skip("spaCy English model unavailable")
 
-    nouns, verbs = nlp.extract_stems(
+    nouns, verbs, _ = nlp.extract_stems(
         "The quick brown fox jumps over the lazy dog.",
         "en",
     )
@@ -92,7 +95,7 @@ def test_extract_stems_with_real_german_model() -> None:
     except RuntimeError:
         pytest.skip("spaCy German model unavailable")
 
-    nouns, verbs = nlp.extract_stems(
+    nouns, verbs, _ = nlp.extract_stems(
         "Der schnelle braune Fuchs springt ueber den faulen Hund.",
         "de",
     )
@@ -107,7 +110,7 @@ def test_extract_stems_with_real_french_model() -> None:
     except RuntimeError:
         pytest.skip("spaCy French model unavailable")
 
-    nouns, verbs = nlp.extract_stems(
+    nouns, verbs, _ = nlp.extract_stems(
         "Le renard brun rapide saute par-dessus le chien paresseux.",
         "fr",
     )
@@ -132,7 +135,7 @@ def test_stopword_removal_real_models(
     except RuntimeError:
         pytest.skip(f"spaCy model for {language} unavailable")
 
-    nouns, verbs = nlp.extract_stems(text, language)
+    nouns, verbs, _ = nlp.extract_stems(text, language)
 
     assert nouns == expected
     assert verbs == []

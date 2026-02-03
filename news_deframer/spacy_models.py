@@ -6,6 +6,18 @@ import urllib.request
 
 SPACY_VERSION = "3.8.0"
 
+SPACY_LANGUAGE_MODELS = {
+    "en": "en_core_web_sm",
+    "de": "de_core_news_sm",
+    "es": "es_core_news_sm",
+    "fr": "fr_core_news_sm",
+    "it": "it_core_news_sm",
+    "pt": "pt_core_news_sm",
+    "nl": "nl_core_news_sm",
+    "pl": "pl_core_news_sm",
+    "ru": "ru_core_news_sm",
+}
+
 
 def ensure_pip():
     """Ensure pip is installed, as some venvs (like uv) might exclude it."""
@@ -42,7 +54,10 @@ def install_models():
     for lang in requested:
         # Construct potential model names.
         # Most languages use 'news', English uses 'web'.
-        candidates = [f"{lang}_core_news_sm", f"{lang}_core_web_sm"]
+        if known := SPACY_LANGUAGE_MODELS.get(lang):
+            candidates = [known]
+        else:
+            candidates = [f"{lang}_core_news_sm", f"{lang}_core_web_sm"]
 
         # 1. Check if any candidate is already installed locally
         installed = False
