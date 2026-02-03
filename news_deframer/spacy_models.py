@@ -94,3 +94,34 @@ def install_models():
         except subprocess.CalledProcessError as e:
             print(f"Failed to download {found_url}: {e}")
             sys.exit(1)
+
+#
+# TODO: maybe try it this way
+#
+
+# import spacy
+# import requests
+# import tarfile
+# import os
+
+# # 1. Define URL and paths
+# model_url = "https://example.com/path/to/your-model.tar.gz"
+# save_path = "model.tar.gz"
+# extract_dir = "./local_model"
+
+# # 2. Download the file
+# response = requests.get(model_url, stream=True)
+# if response.status_code == 200:
+#     with open(save_path, 'wb') as f:
+#         f.write(response.raw.read())
+
+# # 3. Extract the file
+# with tarfile.open(save_path, "r:gz") as tar:
+#     tar.extractall(path=extract_dir)
+
+# # 4. Load from the local directory
+# # Note: You must point to the folder containing 'config.cfg'
+# # often this is a subfolder inside the extracted directory, e.g.:
+# model_path = os.path.join(extract_dir, "en_core_web_sm-3.7.1")
+
+# nlp = spacy.load(model_path)
