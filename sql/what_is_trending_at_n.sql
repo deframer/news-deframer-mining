@@ -6,7 +6,8 @@ SET SESSION "vars.top" = 10;
 --SET SESSION "vars.domain" = 'apollo-news.net';
 --SET SESSION "vars.domain" = 'spiegel.de';
 SET SESSION "vars.domain" = '';
-SET SESSION "vars.language" = 'de';
+--SET SESSION "vars.language" = 'de';
+SET SESSION "vars.language" = 'en';
 
 -- Parameters
 WITH params AS (
