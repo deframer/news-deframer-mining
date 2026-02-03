@@ -6,4 +6,4 @@ SELECT *
 FROM view_trend_metrics
 WHERE "language" = 'en'
   AND time_slice = DATE_TRUNC('day', NOW())
-ORDER BY outlier_ratio DESC;
+ORDER BY outlier_ratio DESC  NULLS LAST;
