@@ -1,22 +1,18 @@
--- 1. Force DuckDB execution for speed
 SET duckdb.force_execution = true;
 
-
-ERROR 'this probably makes no sense'
-
--- 2. Query the Top 20 Trends for English
 SELECT
     stem as trend_topic,
     frequency,
     utility,
     outlier_ratio
-    --root_domain
-FROM view_trend_metrics_by_domain
+FROM view_trend_metrics_by_domain  -- <--- Use the Domain View
 WHERE "language" = 'de'
-  --AND root_domain = 'spiegel.de'
+  AND root_domain = 'tagesschau.de'   -- <--- Filter by Domain
   AND stem_type = 'NOUN'
-  AND time_slice = DATE_TRUNC('day', NOW()) -- Or specific date
-  --AND utility > 3       -- Thesis: Filter out single-source noise
-  AND outlier_ratio > 1.5 -- Thesis: It must be significantly higher than usual
+  AND time_slice = DATE_TRUNC('day', NOW())
+  -- Note: Utility threshold might need to be lower for a single domain
+  -- (e.g. > 1 means it appeared in at least 2 different RSS feeds on that site)
+  AND utility >= 1
+  AND outlier_ratio > 1.5
 ORDER BY outlier_ratio DESC
 LIMIT 20;
