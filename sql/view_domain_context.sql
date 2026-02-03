@@ -9,10 +9,11 @@ WITH trend_context AS (
         unnest(verb_stems) as context_word,
         'VERB' as type
     FROM public.trends
-    WHERE 'bitcoin' = ANY(noun_stems)      -- The Trend Trigger
-    --WHERE 'trump' = ANY(noun_stems)      -- The Trend Trigger
+    --WHERE 'bitcoin' = ANY(noun_stems)      -- The Trend Trigger
+    WHERE 'trump' = ANY(noun_stems)      -- The Trend Trigger
     --  AND "language" = 'en'
       AND "language" = 'de'
+      AND root_domain = 'spiegel.de'
       AND pub_date >= NOW() - INTERVAL '7 DAYS'
 )
 SELECT context_word, count(*) as frequency
