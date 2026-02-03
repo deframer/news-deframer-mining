@@ -1,7 +1,7 @@
 SET duckdb.force_execution = true;
 
 SET SESSION "vars.last" = '30 days';
-SET SESSION "vars.target_word" = 'trump';
+SET SESSION "vars.target_word" = 'usa';
 SET SESSION "vars.language" = 'de';
 SET SESSION "vars.domain" = '';
 
@@ -43,6 +43,8 @@ per_day AS (
 raw_scores AS (
     SELECT
         day,
+        target_count,
+        total_noun_count,
         CASE WHEN total_noun_count > 0
              THEN target_count::FLOAT / total_noun_count
              ELSE 0
@@ -51,9 +53,14 @@ raw_scores AS (
 )
 SELECT
     day,
-    relative_score,
+    -- target_count AS target_count,
+    -- total_noun_count AS total_noun_count,
+    -- relative_score,
+    -- CASE WHEN MAX(relative_score) OVER () = 0 THEN 0
+    --      ELSE relative_score / MAX(relative_score) OVER ()
+    -- END AS scaled,
     CASE WHEN MAX(relative_score) OVER () = 0 THEN 0
-         ELSE relative_score / MAX(relative_score) OVER ()
-    END AS scaled
+         ELSE ROUND((relative_score / MAX(relative_score) OVER ()) * 100)::INT
+    END AS scaled_percent
 FROM raw_scores
 ORDER BY day;
