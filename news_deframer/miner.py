@@ -58,8 +58,6 @@ class Miner:
         noun_stems, verb_stems, adj_stems = extract_stems(
             content,
             task.language,
-            title=task.title,
-            description=task.description,
         )
 
         trend = Trend(

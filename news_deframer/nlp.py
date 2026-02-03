@@ -20,10 +20,7 @@ else:  # pragma: no cover - runtime fallback
 
 def extract_stems(
     content: str,
-    language: str,
-    *,
-    title: Optional[str] = None,
-    description: Optional[str] = None,
+    language: str
 ) -> tuple[Sequence[str], Sequence[str], Sequence[str]]:
     """
     Return noun, verb, and adjective lemmas for ``content`` using spaCy.
@@ -52,7 +49,6 @@ def extract_stems(
     adj_stems = _collect_sorted_unique_stems(doc, {"ADJ"}, language)
 
     return noun_stems, verb_stems, adj_stems
-
 
 def sanitize_text(value: Optional[str]) -> Optional[str]:
     """Strip HTML tags from text using BeautifulSoup."""
