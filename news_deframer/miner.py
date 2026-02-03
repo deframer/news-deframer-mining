@@ -55,7 +55,7 @@ class Miner:
             if stemmed := stem_category(sanitize_text(c), task.language):
                 category_stems.append(stemmed)
 
-        noun_stems, verb_stems = extract_stems(
+        noun_stems, verb_stems, adj_stems = extract_stems(
             content,
             task.language,
             title=task.title,
@@ -70,6 +70,7 @@ class Miner:
             category_stems=category_stems,
             noun_stems=list(noun_stems),
             verb_stems=list(verb_stems),
+            adjective_stems=list(adj_stems),
             root_domain=task.root_domain,
         )
         self._repository.upsert_trends([trend])

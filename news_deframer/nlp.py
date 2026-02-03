@@ -5,6 +5,8 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any, Iterable, Optional, Sequence
 from bs4 import BeautifulSoup
 
+from news_deframer.spacy_models import SPACY_LANGUAGE_MODELS
+
 try:  # pragma: no cover - optional dependency
     import spacy
 except Exception:  # pragma: no cover - optional dependency
@@ -22,23 +24,34 @@ def extract_stems(
     *,
     title: Optional[str] = None,
     description: Optional[str] = None,
-) -> tuple[Sequence[str], Sequence[str]]:
-    """Return noun and verb lemmas for ``content`` using spaCy models."""
+) -> tuple[Sequence[str], Sequence[str], Sequence[str]]:
+    """
+    Return noun, verb, and adjective lemmas for ``content`` using spaCy.
 
+    Returns:
+        (noun_stems, verb_stems, adj_stems)
+    """
     normalized = content.strip()
     if not normalized:
-        return [], []
+        return [], [], []
 
     nlp = _get_spacy_model(language)
+
     try:
         doc = nlp(normalized)
-    except Exception as exc:  # pragma: no cover - spaCy runtime failure
+    except Exception as exc:
         raise RuntimeError("Failed to process text with spaCy model") from exc
 
+    # Thesis: Nouns (Triggers) include common nouns and Proper Nouns (Entities)
     noun_stems = _collect_sorted_unique_stems(doc, {"NOUN", "PROPN"}, language)
+
+    # Thesis: Verbs are 'Diversificators' indicating action
     verb_stems = _collect_sorted_unique_stems(doc, {"VERB"}, language)
 
-    return noun_stems, verb_stems
+    # Thesis: Adjectives are 'Diversificators' indicating sentiment/direction
+    adj_stems = _collect_sorted_unique_stems(doc, {"ADJ"}, language)
+
+    return noun_stems, verb_stems, adj_stems
 
 
 def sanitize_text(value: Optional[str]) -> Optional[str]:
@@ -73,18 +86,6 @@ def stem_category(text: Optional[str], language: str) -> Optional[str]:
     return " ".join(lemmas) if lemmas else None
 
 
-_SPACY_LANGUAGE_MODELS = {
-    "en": "en_core_web_sm",
-    "de": "de_core_news_sm",
-    "es": "es_core_news_sm",
-    "fr": "fr_core_news_sm",
-    "it": "it_core_news_sm",
-    "pt": "pt_core_news_sm",
-    "nl": "nl_core_news_sm",
-    "pl": "pl_core_news_sm",
-    "ru": "ru_core_news_sm",
-}
-_FALLBACK_SPACY_MODEL = "xx_ent_wiki_sm"
 _NLP_CACHE: dict[str, SpacyLanguage] = {}
 _STOPWORD_CACHE: dict[str, frozenset[str]] = {}
 
@@ -94,28 +95,21 @@ def _get_spacy_model(language: str) -> SpacyLanguage:
         raise RuntimeError("spaCy is required but not installed")
 
     lang_code = (language or "").split("-")[0].lower()
-    candidates: list[str] = []
 
-    model_name = _SPACY_LANGUAGE_MODELS.get(lang_code)
-    if model_name:
-        candidates.append(model_name)
+    model_name = SPACY_LANGUAGE_MODELS.get(lang_code)
+    if not model_name:
+        raise RuntimeError(f"No spaCy model available for language '{language}'")
 
-    if _FALLBACK_SPACY_MODEL not in candidates:
-        candidates.append(_FALLBACK_SPACY_MODEL)
+    if model_name in _NLP_CACHE:
+        return _NLP_CACHE[model_name]
 
-    for name in candidates:
-        if name in _NLP_CACHE:
-            return _NLP_CACHE[name]
+    try:
+        model = spacy.load(model_name, disable=("ner",))
+    except Exception as exc:  # pragma: no cover - propagate failure gracefully
+        raise RuntimeError(f"Failed to load spaCy model '{model_name}'") from exc
 
-        try:
-            model = spacy.load(name, disable=("ner",))
-        except Exception as exc:  # pragma: no cover - propagate failure gracefully
-            raise RuntimeError(f"Failed to load spaCy model '{name}'") from exc
-
-        _NLP_CACHE[name] = model
-        return model
-
-    raise RuntimeError(f"No spaCy model available for language '{language}'")
+    _NLP_CACHE[model_name] = model
+    return model
 
 
 def _get_stopwords(language: str) -> frozenset[str]:
@@ -158,10 +152,9 @@ def _collect_sorted_unique_stems(
     stems = {
         token.lemma_.lower()
         for token in tokens
-        if token.pos_ in allowed_pos
+        if token.pos_ in allowed_pos  # Strict POS filtering
         and token.lemma_
-        and token.is_alpha
-        and not _is_stop_word(token.lemma_, language)
+        and token.is_alpha  # Remove punctuation/numbers
+        and not token.is_stop  # Keep generic stop word removal
     }
-
     return sorted(stems)

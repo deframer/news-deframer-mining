@@ -44,6 +44,7 @@ class Trend:
     category_stems: list[str] = field(default_factory=list)
     noun_stems: list[str] = field(default_factory=list)
     verb_stems: list[str] = field(default_factory=list)
+    adjective_stems: list[str] = field(default_factory=list)
 
 
 register_uuid()
@@ -215,6 +216,7 @@ class Postgres:
                 category_stems,
                 noun_stems,
                 verb_stems,
+                adjective_stems,
                 root_domain
             ) VALUES %s
             ON CONFLICT (item_id) DO UPDATE SET
@@ -224,6 +226,7 @@ class Postgres:
                 category_stems = EXCLUDED.category_stems,
                 noun_stems = EXCLUDED.noun_stems,
                 verb_stems = EXCLUDED.verb_stems,
+                adjective_stems = EXCLUDED.adjective_stems,
                 root_domain = EXCLUDED.root_domain
         """
 
@@ -236,6 +239,7 @@ class Postgres:
                 t.category_stems,
                 t.noun_stems,
                 t.verb_stems,
+                t.adjective_stems,
                 t.root_domain,
             )
             for t in trends
