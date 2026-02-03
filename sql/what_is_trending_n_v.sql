@@ -1,7 +1,7 @@
 SET duckdb.force_execution = true;
 
 SET SESSION "vars.last" = '30 days';
-SET SESSION "vars.top" = 5;
+SET SESSION "vars.top" = 10;
 --SET SESSION "vars.domain" = 'apollo-news.net';
 SET SESSION "vars.domain" = 'spiegel.de';
 
