@@ -53,8 +53,8 @@ WITH ranked_global_trends AS (
     FROM view_trend_metrics  -- <--- Using the GLOBAL View
     WHERE "language" = 'de'
       AND stem_type = 'NOUN'
-      AND time_slice = DATE_TRUNC('day', NOW())  -- Or specific date
-      --AND time_slice >= NOW() - INTERVAL '7 DAYS'
+      --AND time_slice = DATE_TRUNC('day', NOW())  -- Or specific date
+      AND time_slice >= NOW() - INTERVAL '7 DAYS'
       AND utility > 3        -- Thesis: Higher threshold for global trends (need broad consensus)
       AND outlier_ratio > 1.5
 )

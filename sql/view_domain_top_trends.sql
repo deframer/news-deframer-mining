@@ -52,8 +52,8 @@ WITH ranked_trends AS (
     WHERE "language" = 'de'
       AND root_domain = 'tagesschau.de'
       AND stem_type = 'NOUN'
-      AND time_slice = DATE_TRUNC('day', NOW())  -- Or specific date
-      -- AND time_slice >= NOW() - INTERVAL '7 DAYS'
+      --AND time_slice = DATE_TRUNC('day', NOW())  -- Or specific date
+      AND time_slice >= NOW() - INTERVAL '7 DAYS'
       -- Note: Utility threshold might need to be lower for a single domain
       -- (e.g. > 1 means it appeared in at least 2 different RSS feeds on that site)
       AND utility >= 1

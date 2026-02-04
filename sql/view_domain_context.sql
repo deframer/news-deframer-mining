@@ -21,3 +21,18 @@ FROM trend_context
 GROUP BY 1
 ORDER BY 2 DESC, 1
 LIMIT 10;
+
+/*
+  context_word  | frequency
+----------------+-----------
+ anlaufen       |         1
+ besänftigen    |         1
+ einmischen     |         1
+ engagieren     |         1
+ fernbleiben    |         1
+ funktionieren  |         1
+ jagen          |         1
+ lehnen         |         1
+ mitproduzieren |         1
+ nehmen         |         1
+*/
