@@ -95,6 +95,7 @@ def install_models():
             print(f"Failed to download {found_url}: {e}")
             sys.exit(1)
 
+
 #
 # TODO: maybe try it this way
 #
