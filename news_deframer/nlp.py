@@ -35,7 +35,7 @@ def stem_category(text: Optional[str], language: str) -> Optional[str]:
     if not normalized:
         return None
 
-    nlp = _get_spacy_model(language)
+    nlp = _get_spacy_model(language, with_ner=False)
     try:
         doc = nlp(normalized)
     except Exception as exc:
@@ -50,29 +50,41 @@ def stem_category(text: Optional[str], language: str) -> Optional[str]:
     return " ".join(lemmas) if lemmas else None
 
 
-_NLP_CACHE: dict[str, SpacyLanguage] = {}
+_NLP_CACHE: dict[tuple[str, bool], SpacyLanguage] = {}
 _STOPWORD_CACHE: dict[str, frozenset[str]] = {}
 
 
-def _get_spacy_model(language: str) -> SpacyLanguage:
+def _get_language_code(language: str) -> str:
+    """Extract the base language code (e.g., 'en-US' -> 'en')."""
+    return (language or "").split("-")[0].lower()
+
+
+def _get_spacy_model_name(language: str) -> str:
+    """Retrieve the spaCy model name for a given language code."""
     if spacy is None:
         raise RuntimeError("spaCy is required but not installed")
 
-    lang_code = (language or "").split("-")[0].lower()
-
+    lang_code = _get_language_code(language)
     model_name = SPACY_LANGUAGE_MODELS.get(lang_code)
     if not model_name:
         raise RuntimeError(f"No spaCy model available for language '{language}'")
+    return model_name
 
-    if model_name in _NLP_CACHE:
-        return _NLP_CACHE[model_name]
+
+def _get_spacy_model(language: str, with_ner: bool = True) -> SpacyLanguage:
+    model_name = _get_spacy_model_name(language)
+    cache_key = (model_name, with_ner)
+
+    if cache_key in _NLP_CACHE:
+        return _NLP_CACHE[cache_key]
 
     try:
-        model = spacy.load(model_name, disable=("ner",))
+        disable = () if with_ner else ("ner",)
+        model = spacy.load(model_name, disable=disable)
     except Exception as exc:  # pragma: no cover - propagate failure gracefully
         raise RuntimeError(f"Failed to load spaCy model '{model_name}'") from exc
 
-    _NLP_CACHE[model_name] = model
+    _NLP_CACHE[cache_key] = model
     return model
 
 
@@ -80,7 +92,7 @@ def _get_stopwords(language: str) -> frozenset[str]:
     if spacy is None:
         raise RuntimeError("spaCy is required but not installed")
 
-    lang_code = (language or "").split("-")[0].lower()
+    lang_code = _get_language_code(language)
     if not lang_code:
         raise RuntimeError("Language code is required for stopword handling")
 
@@ -132,7 +144,7 @@ def extract_stems(
     if not normalized:
         return [], [], []
 
-    nlp = _get_spacy_model(language)
+    nlp = _get_spacy_model(language, with_ner=True)
 
     try:
         doc = nlp(normalized)
@@ -146,7 +158,10 @@ def extract_stems(
     trigger_stems = set()
 
     # A. Extract Named Entities
-    for ent in getattr(doc, "ents", []):
+    if not hasattr(doc, "ents"):
+        model_name = _get_spacy_model_name(language)
+        raise AttributeError(f"Model '{model_name}' output has no 'ents' attribute")
+    for ent in doc.ents:
         if ent.label_ in RELEVANT_ENTITY_LABELS:
             # We use the lemma of the entity (e.g., "Donald Trumps" -> "donald trump")
             if ent.lemma_ and not ent.lemma_.isspace():
@@ -187,7 +202,7 @@ def extract_stems_simple(
     if not normalized:
         return [], [], []
 
-    nlp = _get_spacy_model(language)
+    nlp = _get_spacy_model(language, with_ner=False)
 
     try:
         doc = nlp(normalized)

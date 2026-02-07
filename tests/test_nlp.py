@@ -35,7 +35,7 @@ def test_extract_stems_uses_spacy_when_available(monkeypatch) -> None:
                 DummyToken("Ignored", "ADJ"),
             ]
 
-    monkeypatch.setattr(nlp, "_get_spacy_model", lambda _: DummyModel())
+    monkeypatch.setattr(nlp, "_get_spacy_model", lambda _, **kwargs: DummyModel())
     monkeypatch.setattr(nlp, "_get_stopwords", lambda _lang: frozenset())
 
     nouns, verbs, adjs = nlp.extract_stems("Cities walk", "en")
@@ -65,7 +65,7 @@ def test_extract_stems_returns_unique_sorted_lemmas(monkeypatch) -> None:
                 DummyToken("Jog", "VERB"),
             ]
 
-    monkeypatch.setattr(nlp, "_get_spacy_model", lambda _: DummyModel())
+    monkeypatch.setattr(nlp, "_get_spacy_model", lambda _, **kwargs: DummyModel())
     monkeypatch.setattr(nlp, "_get_stopwords", lambda _lang: frozenset())
 
     nouns, verbs, _ = nlp.extract_stems("content", "en")
@@ -162,3 +162,21 @@ def test_stem_category_real_models(
         pytest.skip(f"spaCy model for {language} unavailable")
 
     assert nlp.stem_category(text, language) == expected
+
+@pytest.mark.parametrize(
+    "language,text,expected_entity",
+    [
+        ("en", "The conference was held in Abu Dhabi yesterday.", "abu dhabi"),
+        ("en", "Donald Trump visited the city.", "donald trump"),
+    ],
+)
+def test_ner_recognition_real_models(language: str, text: str, expected_entity: str) -> None:
+    """Verify that multi-word entities are recognized as single units."""
+    try:
+        nlp._get_spacy_model(language)
+    except RuntimeError:
+        pytest.skip(f"spaCy {language} model unavailable")
+
+    nouns, _, _ = nlp.extract_stems(text, language)
+
+    assert expected_entity in nouns
