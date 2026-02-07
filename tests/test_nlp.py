@@ -42,12 +42,14 @@ def test_extract_stems_uses_spacy_when_available(monkeypatch) -> None:
 
     class DummyModel:
         def __call__(self, _: str):
-            return DummyDoc([
-                DummyToken("City", "NOUN"),
-                DummyToken("Walk", "VERB"),
-                DummyToken("People", "PROPN"),
-                DummyToken("Ignored", "ADJ"),
-            ])
+            return DummyDoc(
+                [
+                    DummyToken("City", "NOUN"),
+                    DummyToken("Walk", "VERB"),
+                    DummyToken("People", "PROPN"),
+                    DummyToken("Ignored", "ADJ"),
+                ]
+            )
 
     monkeypatch.setattr(nlp, "_get_spacy_model", lambda _, **kwargs: DummyModel())
     monkeypatch.setattr(nlp, "_get_stopwords", lambda _lang: frozenset())
@@ -74,15 +76,17 @@ def test_extract_stems_returns_unique_sorted_lemmas(monkeypatch) -> None:
 
     class DummyModel:
         def __call__(self, _: str):
-            return DummyDoc([
-                DummyToken("Banana", "NOUN"),
-                DummyToken("apple", "PROPN"),
-                DummyToken("banana", "NOUN"),
-                DummyToken("carrot", "NOUN"),
-                DummyToken("Run", "VERB"),
-                DummyToken("run", "VERB"),
-                DummyToken("Jog", "VERB"),
-            ])
+            return DummyDoc(
+                [
+                    DummyToken("Banana", "NOUN"),
+                    DummyToken("apple", "PROPN"),
+                    DummyToken("banana", "NOUN"),
+                    DummyToken("carrot", "NOUN"),
+                    DummyToken("Run", "VERB"),
+                    DummyToken("run", "VERB"),
+                    DummyToken("Jog", "VERB"),
+                ]
+            )
 
     monkeypatch.setattr(nlp, "_get_spacy_model", lambda _, **kwargs: DummyModel())
     monkeypatch.setattr(nlp, "_get_stopwords", lambda _lang: frozenset())
@@ -182,13 +186,32 @@ def test_stem_category_real_models(
 
     assert nlp.stem_category(text, language) == expected
 
+
 @pytest.mark.parametrize(
     "language,text,should_find,should_not_find,with_ner",
     [
-        ("en", "The conference was held in Abu Dhabi yesterday.", ["abu dhabi"], [], True),
-        ("en", "The conference was held in Abu Dhabi yesterday.", ["abu", "dhabi"], ["abu dhabi"], False),
+        (
+            "en",
+            "The conference was held in Abu Dhabi yesterday.",
+            ["abu dhabi"],
+            [],
+            True,
+        ),
+        (
+            "en",
+            "The conference was held in Abu Dhabi yesterday.",
+            ["abu", "dhabi"],
+            ["abu dhabi"],
+            False,
+        ),
         ("en", "Donald Trump visited the city.", ["donald trump"], [], True),
-        ("en", "Donald Trump visited the city.", ["donald", "trump"], ["donald trump"], False),
+        (
+            "en",
+            "Donald Trump visited the city.",
+            ["donald", "trump"],
+            ["donald trump"],
+            False,
+        ),
     ],
 )
 def test_ner_recognition_real_models(

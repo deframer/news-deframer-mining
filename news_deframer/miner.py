@@ -59,9 +59,7 @@ class Miner:
         with_ner = False
 
         noun_stems, verb_stems, adj_stems = extract_stems(
-            content,
-            task.language,
-            with_ner=with_ner
+            content, task.language, with_ner=with_ner
         )
 
         trend = Trend(
