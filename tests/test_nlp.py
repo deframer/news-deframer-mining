@@ -5,6 +5,15 @@ import pytest
 from news_deframer import nlp
 
 
+@pytest.fixture(autouse=True)
+def clear_nlp_caches() -> None:
+    nlp._NLP_CACHE.clear()
+    nlp._STOPWORD_CACHE.clear()
+    yield
+    nlp._NLP_CACHE.clear()
+    nlp._STOPWORD_CACHE.clear()
+
+
 def test_sanitize_text_strips_html() -> None:
     html_text = "<p>Hello <strong>World</strong>&nbsp;!</p>"
     assert nlp.sanitize_text(html_text) == "Hello World\xa0!"
@@ -26,14 +35,19 @@ def test_extract_stems_uses_spacy_when_available(monkeypatch) -> None:
             self.is_alpha = True
             self.is_stop = False
 
+    class DummyDoc(list):
+        def __init__(self, items):
+            super().__init__(items)
+            self.ents = []
+
     class DummyModel:
         def __call__(self, _: str):
-            return [
+            return DummyDoc([
                 DummyToken("City", "NOUN"),
                 DummyToken("Walk", "VERB"),
                 DummyToken("People", "PROPN"),
                 DummyToken("Ignored", "ADJ"),
-            ]
+            ])
 
     monkeypatch.setattr(nlp, "_get_spacy_model", lambda _, **kwargs: DummyModel())
     monkeypatch.setattr(nlp, "_get_stopwords", lambda _lang: frozenset())
@@ -53,9 +67,14 @@ def test_extract_stems_returns_unique_sorted_lemmas(monkeypatch) -> None:
             self.is_alpha = True
             self.is_stop = False
 
+    class DummyDoc(list):
+        def __init__(self, items):
+            super().__init__(items)
+            self.ents = []
+
     class DummyModel:
         def __call__(self, _: str):
-            return [
+            return DummyDoc([
                 DummyToken("Banana", "NOUN"),
                 DummyToken("apple", "PROPN"),
                 DummyToken("banana", "NOUN"),
@@ -63,7 +82,7 @@ def test_extract_stems_returns_unique_sorted_lemmas(monkeypatch) -> None:
                 DummyToken("Run", "VERB"),
                 DummyToken("run", "VERB"),
                 DummyToken("Jog", "VERB"),
-            ]
+            ])
 
     monkeypatch.setattr(nlp, "_get_spacy_model", lambda _, **kwargs: DummyModel())
     monkeypatch.setattr(nlp, "_get_stopwords", lambda _lang: frozenset())
