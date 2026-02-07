@@ -40,6 +40,7 @@ download-models:
 
 docker-build:
 	docker build -t $(DOCKER_REPO)/$(APP_NAME):latest -f build/package/mining/Dockerfile .
+	docker images $(DOCKER_REPO)/$(APP_NAME):latest  --format "{{.Size}}"
 
 clean:
 	docker compose $(DOCKER_ENV_FLAG) -f $(DOCKER_COMPOSE_FILE) down --rmi local --volumes
