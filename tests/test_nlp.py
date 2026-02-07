@@ -1,12 +1,14 @@
 from __future__ import annotations
 
+from typing import Generator
+
 import pytest
 
 from news_deframer import nlp
 
 
 @pytest.fixture(autouse=True)
-def clear_nlp_caches() -> None:
+def clear_nlp_caches() -> Generator[None, None, None]:
     nlp._NLP_CACHE.clear()
     nlp._STOPWORD_CACHE.clear()
     yield
