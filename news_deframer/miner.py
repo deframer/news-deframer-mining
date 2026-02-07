@@ -55,9 +55,13 @@ class Miner:
             if stemmed := stem_category(sanitize_text(c), task.language):
                 category_stems.append(stemmed)
 
+        # turn off ner
+        with_ner = False
+
         noun_stems, verb_stems, adj_stems = extract_stems(
             content,
             task.language,
+            with_ner=with_ner
         )
 
         trend = Trend(

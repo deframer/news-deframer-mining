@@ -130,7 +130,7 @@ RELEVANT_ENTITY_LABELS = {"PERSON", "ORG", "GPE", "LOC", "EVENT", "FAC"}
 
 
 def extract_stems(
-    content: str, language: str
+    content: str, language: str, with_ner: bool = True
 ) -> tuple[Sequence[str], Sequence[str], Sequence[str]]:
     """
     Return noun, verb, and adjective lemmas using spaCy with NER integration.
@@ -144,7 +144,7 @@ def extract_stems(
     if not normalized:
         return [], [], []
 
-    nlp = _get_spacy_model(language, with_ner=True)
+    nlp = _get_spacy_model(language, with_ner=with_ner)
 
     try:
         doc = nlp(normalized)
@@ -158,14 +158,15 @@ def extract_stems(
     trigger_stems = set()
 
     # A. Extract Named Entities
-    if not hasattr(doc, "ents"):
-        model_name = _get_spacy_model_name(language)
-        raise AttributeError(f"Model '{model_name}' output has no 'ents' attribute")
-    for ent in doc.ents:
-        if ent.label_ in RELEVANT_ENTITY_LABELS:
-            # We use the lemma of the entity (e.g., "Donald Trumps" -> "donald trump")
-            if ent.lemma_ and not ent.lemma_.isspace():
-                trigger_stems.add(ent.lemma_.lower())
+    if with_ner:
+        if not hasattr(doc, "ents"):
+            model_name = _get_spacy_model_name(language)
+            raise AttributeError(f"Model '{model_name}' output has no 'ents' attribute")
+        for ent in doc.ents:
+            if ent.label_ in RELEVANT_ENTITY_LABELS:
+                # We use the lemma of the entity (e.g., "Donald Trumps" -> "donald trump")
+                if ent.lemma_ and not ent.lemma_.isspace():
+                    trigger_stems.add(ent.lemma_.lower())
 
     # B. Extract Common Topics (Nouns)
     # Thesis: Topics ($To$) are also part of Triggers (Def 8.1.2)
