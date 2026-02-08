@@ -296,7 +296,9 @@ def test_stem_category_filters_custom_stopwords(monkeypatch) -> None:
 def test_extract_stems_simple_filters_custom_stopwords(monkeypatch) -> None:
     # Reuse the mock setup from test_extract_stems_uses_custom_stopwords_with_mock
     # but apply it to the simple function
-    monkeypatch.setattr(nlp, "_get_spacy_model", lambda _, **kwargs: nlp._get_spacy_model("en"))
+    monkeypatch.setattr(
+        nlp, "_get_spacy_model", lambda _, **kwargs: nlp._get_spacy_model("en")
+    )
     # We need to mock the model creation inside the function or rely on the previous mock
     # Since we can't easily reuse the inner class from another test without duplication:
     # We'll skip implementation details and trust the shared helper _collect_sorted_unique_stems

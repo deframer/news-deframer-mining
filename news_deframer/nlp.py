@@ -49,7 +49,8 @@ def stem_category(
     lemmas = [
         token.lemma_.lower()
         for token in doc
-        if token.is_alpha and not _is_stop_word(token.lemma_, language)
+        if token.is_alpha
+        and not _is_stop_word(token.lemma_, language)
         and token.lemma_.lower() not in custom_stops
     ]
 
