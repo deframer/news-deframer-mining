@@ -155,6 +155,11 @@ def _build_task(feed: Feed, item: Item) -> MiningTask:
     domain = feed.root_domain or get_root_domain(feed.url)
     base_domain = get_base_domain_name(feed.url)
 
+    # we split here for apollo-news also at the -
+    stop_words = (
+        [w for w in base_domain.split("-") if len(w) >= 3] if base_domain else []
+    )
+
     title, description = _extract_title_and_description(item.content, item_id=item.id)
     return MiningTask(
         feed_id=feed.id,
@@ -166,8 +171,7 @@ def _build_task(feed: Feed, item: Item) -> MiningTask:
         title=title,
         description=description,
         pub_date=item.pub_date,
-        # we split here for apollo-news also at the -
-        stop_words=base_domain.split("-") if base_domain else [],
+        stop_words=stop_words,
     )
 
 

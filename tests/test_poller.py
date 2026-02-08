@@ -247,5 +247,5 @@ def test_poll_feed_splits_base_domain_stop_words() -> None:
     poll_feed(feed, miner, repo)
 
     assert len(miner.tasks) == 1
-    # "my-cool-site" -> ["my", "cool", "site"]
-    assert set(miner.tasks[0].stop_words) == {"my", "cool", "site"}
+    # "my-cool-site" -> ["cool", "site"]
+    assert set(miner.tasks[0].stop_words) == {"cool", "site"}
