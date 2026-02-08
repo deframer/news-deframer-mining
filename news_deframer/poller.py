@@ -16,7 +16,11 @@ from news_deframer.config import (
     POLLING_INTERVAL,
     Config,
 )
-from news_deframer.netutil import get_root_domain
+from news_deframer.netutil import (
+    flush_domain_cache,
+    get_base_domain_name,
+    get_root_domain,
+)
 from news_deframer.postgres import Feed, Item, Postgres
 from news_deframer.miner import Miner, MiningTask
 
@@ -87,6 +91,9 @@ def poll_feed(feed: Feed, miner: Miner, repository: Any) -> Optional[Exception]:
         logger.info("No pending items to mine for feed %s", feed_label)
         return None
 
+    # flush cache
+    flush_domain_cache()
+
     logger.info("Fetched %s pending items for feed %s", len(items), feed_label)
     for item in items:
         try:
@@ -146,6 +153,8 @@ def _build_task(feed: Feed, item: Item) -> MiningTask:
 
     categories = sorted({*feed.categories, *item.categories})
     domain = feed.root_domain or get_root_domain(feed.url)
+    base_domain = get_base_domain_name(feed.url)
+
     title, description = _extract_title_and_description(item.content, item_id=item.id)
     return MiningTask(
         feed_id=feed.id,
@@ -157,6 +166,8 @@ def _build_task(feed: Feed, item: Item) -> MiningTask:
         title=title,
         description=description,
         pub_date=item.pub_date,
+        # we split here for apollo-news also at the -
+        stop_words=base_domain.split("-") if base_domain else [],
     )
 
 
