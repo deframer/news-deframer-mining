@@ -111,3 +111,32 @@ def test_miner_stem_extraction_real_models(
     stored_trend = repo.upserted[0]
     assert stored_trend.noun_stems == expected_nouns
     assert stored_trend.verb_stems == expected_verbs
+
+
+def test_mine_item_filters_stop_words():
+    try:
+        nlp._get_spacy_model("en")
+    except RuntimeError:
+        pytest.skip("spaCy English model unavailable")
+
+    repo = RepositoryStub()
+    miner = Miner(make_config(), repository=cast(Postgres, repo))
+    task = MiningTask(
+        feed_id=uuid4(),
+        feed_url="https://feed",
+        item_id=uuid4(),
+        language="en",
+        categories=[],
+        title="The Fox",
+        description="The Dog",
+        pub_date=datetime(2024, 1, 1, 12, 0, 0),
+        root_domain="example.com",
+        stop_words=["fox"],
+    )
+
+    miner.mine_item(task)
+
+    assert len(repo.upserted) == 1
+    stored_trend = repo.upserted[0]
+    assert "fox" not in stored_trend.noun_stems
+    assert "dog" in stored_trend.noun_stems

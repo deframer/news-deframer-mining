@@ -230,3 +230,22 @@ def test_extract_title_and_description_with_unknown_namespaces() -> None:
     title, description = _extract_title_and_description(content)
     assert title == "Extracted Title"
     assert description == "Extracted Description"
+
+
+def test_poll_feed_splits_base_domain_stop_words() -> None:
+    feed_id = uuid4()
+    feed = Feed(id=feed_id, url="https://my-cool-site.com/feed")
+    item = Item(
+        id=uuid4(),
+        feed_id=feed_id,
+        content="<item/>",
+        pub_date=datetime(2024, 1, 1, 0, 0, 0),
+    )
+    repo = DummyRepo(pending_items=[item])
+    miner = DummyMiner()
+
+    poll_feed(feed, miner, repo)
+
+    assert len(miner.tasks) == 1
+    # "my-cool-site" -> ["my", "cool", "site"]
+    assert set(miner.tasks[0].stop_words) == {"my", "cool", "site"}

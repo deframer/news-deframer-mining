@@ -26,7 +26,11 @@ def sanitize_text(value: Optional[str]) -> Optional[str]:
     return BeautifulSoup(value, "html.parser").get_text()
 
 
-def stem_category(text: Optional[str], language: str) -> Optional[str]:
+def stem_category(
+    text: Optional[str],
+    language: str,
+    stop_words: Optional[Iterable[str]] = None,
+) -> Optional[str]:
     """Return the lemmatized version of a category string."""
     if not text:
         return None
@@ -35,6 +39,7 @@ def stem_category(text: Optional[str], language: str) -> Optional[str]:
     if not normalized:
         return None
 
+    custom_stops = set(w.lower() for w in (stop_words or []))
     nlp = _get_spacy_model(language, with_ner=False)
     try:
         doc = nlp(normalized)
@@ -45,6 +50,7 @@ def stem_category(text: Optional[str], language: str) -> Optional[str]:
         token.lemma_.lower()
         for token in doc
         if token.is_alpha and not _is_stop_word(token.lemma_, language)
+        and token.lemma_.lower() not in custom_stops
     ]
 
     return " ".join(lemmas) if lemmas else None
@@ -130,7 +136,10 @@ RELEVANT_ENTITY_LABELS = {"PERSON", "ORG", "GPE", "LOC", "EVENT", "FAC"}
 
 
 def extract_stems(
-    content: str, language: str, with_ner: bool = True
+    content: str,
+    language: str,
+    stop_words: Optional[Iterable[str]] = None,
+    with_ner: bool = True,
 ) -> tuple[Sequence[str], Sequence[str], Sequence[str]]:
     """
     Return noun, verb, and adjective lemmas using spaCy with NER integration.
@@ -144,6 +153,7 @@ def extract_stems(
     if not normalized:
         return [], [], []
 
+    custom_stops = set(w.lower() for w in (stop_words or []))
     nlp = _get_spacy_model(language, with_ner=with_ner)
 
     try:
@@ -166,12 +176,16 @@ def extract_stems(
             if ent.label_ in RELEVANT_ENTITY_LABELS:
                 # We use the lemma of the entity (e.g., "Donald Trumps" -> "donald trump")
                 if ent.lemma_ and not ent.lemma_.isspace():
-                    trigger_stems.add(ent.lemma_.lower())
+                    lemma = ent.lemma_.lower()
+                    if lemma not in custom_stops:
+                        trigger_stems.add(lemma)
 
     # B. Extract Common Topics (Nouns)
     # Thesis: Topics ($To$) are also part of Triggers (Def 8.1.2)
     # We collect generic nouns that fall outside of named entities (e.g., "price", "crisis")
-    noun_tokens = _collect_sorted_unique_stems(doc, {"NOUN", "PROPN"}, language)
+    noun_tokens = _collect_sorted_unique_stems(
+        doc, {"NOUN", "PROPN"}, language, custom_stops
+    )
     trigger_stems.update(noun_tokens)
 
     # Sort the combined set of Entities and Topics
@@ -179,17 +193,19 @@ def extract_stems(
 
     # --- 2. The Context ($C$) ---
     # Thesis: Verbs define the action or relation (Def 8.1.3)
-    verb_stems = _collect_sorted_unique_stems(doc, {"VERB"}, language)
+    verb_stems = _collect_sorted_unique_stems(doc, {"VERB"}, language, custom_stops)
 
     # --- 3. The Diversificator ---
     # Thesis: Adjectives act as satisfiers/disatisfiers (Section 7.2.3)
-    adj_stems = _collect_sorted_unique_stems(doc, {"ADJ"}, language)
+    adj_stems = _collect_sorted_unique_stems(doc, {"ADJ"}, language, custom_stops)
 
     return noun_stems, verb_stems, adj_stems
 
 
 def extract_stems_simple(
-    content: str, language: str
+    content: str,
+    language: str,
+    stop_words: Optional[Iterable[str]] = None,
 ) -> tuple[Sequence[str], Sequence[str], Sequence[str]]:
     # TODO: you must implement Named Entity Recognition (NER) as described in Chapter 12.3.2 of the thesis
     # Filter: Only keep meaningful entities (Person, Org, GPE/Location)
@@ -203,6 +219,7 @@ def extract_stems_simple(
     if not normalized:
         return [], [], []
 
+    custom_stops = set(w.lower() for w in (stop_words or []))
     nlp = _get_spacy_model(language, with_ner=False)
 
     try:
@@ -212,13 +229,15 @@ def extract_stems_simple(
 
     # Thesis: Nouns (Triggers) include common nouns and Proper Nouns (Entities)
     # This doesn't handle NER (Named Entity Recognition e.g. Person Names or Locations)
-    noun_stems = _collect_sorted_unique_stems(doc, {"NOUN", "PROPN"}, language)
+    noun_stems = _collect_sorted_unique_stems(
+        doc, {"NOUN", "PROPN"}, language, custom_stops
+    )
 
     # Thesis: Verbs are 'Diversificators' indicating action
-    verb_stems = _collect_sorted_unique_stems(doc, {"VERB"}, language)
+    verb_stems = _collect_sorted_unique_stems(doc, {"VERB"}, language, custom_stops)
 
     # Thesis: Adjectives are 'Diversificators' indicating sentiment/direction
-    adj_stems = _collect_sorted_unique_stems(doc, {"ADJ"}, language)
+    adj_stems = _collect_sorted_unique_stems(doc, {"ADJ"}, language, custom_stops)
 
     return noun_stems, verb_stems, adj_stems
 
@@ -227,6 +246,7 @@ def _collect_sorted_unique_stems(
     tokens: Iterable[Any],
     allowed_pos: set[str],
     language: str,
+    custom_stops: Optional[set[str]] = None,
 ) -> list[str]:
     stems = {
         token.lemma_.lower()
@@ -235,5 +255,6 @@ def _collect_sorted_unique_stems(
         and token.lemma_
         and token.is_alpha  # Remove punctuation/numbers
         and not token.is_stop  # Keep generic stop word removal
+        and (not custom_stops or token.lemma_.lower() not in custom_stops)
     }
     return sorted(stems)

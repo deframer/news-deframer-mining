@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 import logging
 from typing import Optional
@@ -27,6 +27,7 @@ class MiningTask:
     pub_date: datetime
     root_domain: str
     feed_url: Optional[str] = None
+    stop_words: list[str] = field(default_factory=list)
 
 
 class Miner:
@@ -52,14 +53,19 @@ class Miner:
 
         category_stems = []
         for c in task.categories:
-            if stemmed := stem_category(sanitize_text(c), task.language):
+            if stemmed := stem_category(
+                sanitize_text(c), task.language, stop_words=task.stop_words
+            ):
                 category_stems.append(stemmed)
 
         # turn off ner
         with_ner = False
 
         noun_stems, verb_stems, adj_stems = extract_stems(
-            content, task.language, with_ner=with_ner
+            content,
+            task.language,
+            stop_words=task.stop_words,
+            with_ner=with_ner,
         )
 
         trend = Trend(
