@@ -14,7 +14,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
 
     config = Config.load()
     repository = Postgres(config)
-    trends = repository.fetch_trends_without_sentiments(limit=5000)
+    trends = repository.fetch_trends_without_sentiments(limit=1000)
     updates = {}
 
     for trend in trends:
