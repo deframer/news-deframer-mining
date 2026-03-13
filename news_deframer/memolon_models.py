@@ -7,6 +7,13 @@ MEMOLON_VERSION = "0.0.1"
 MEMOLON_LANGUAGE_MODELS = {
     "en": f"memolon-grouped-en-{MEMOLON_VERSION}.parquet",
     "de": f"memolon-grouped-de-{MEMOLON_VERSION}.parquet",
+    "es": f"memolon-grouped-es-{MEMOLON_VERSION}.parquet",
+    "fr": f"memolon-grouped-fr-{MEMOLON_VERSION}.parquet",
+    "it": f"memolon-grouped-it-{MEMOLON_VERSION}.parquet",
+    "pt": f"memolon-grouped-pt-{MEMOLON_VERSION}.parquet",
+    "nl": f"memolon-grouped-nl-{MEMOLON_VERSION}.parquet",
+    "ru": f"memolon-grouped-ru-{MEMOLON_VERSION}.parquet",
+    "da": f"memolon-grouped-da-{MEMOLON_VERSION}.parquet",
 }
 
 

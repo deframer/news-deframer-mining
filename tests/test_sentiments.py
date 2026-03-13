@@ -134,6 +134,39 @@ def test_extract_sentiments_returns_none_for_missing_word(monkeypatch) -> None:
     assert sentiments.extract_sentiments("Butter", "en") is None
 
 
+def test_extract_sentiments_array_returns_medians(monkeypatch) -> None:
+    lookup = {
+        "cheese": {"v": 7.111, "j": 6.0, "f": 1.0},
+        "bread": {"v": 5.555, "j": 4.0, "f": 2.0},
+        "happy": {"v": 8.888, "j": 7.0, "f": 1.0},
+    }
+
+    monkeypatch.setattr(
+        sentiments,
+        "extract_sentiments",
+        lambda word, _language: lookup.get(word.lower()),
+    )
+
+    result = sentiments.extract_sentiments_array(
+        (["Cheese", "Missing"], ["Bread"], ["Happy"]),
+        "en",
+    )
+
+    assert result == {"v": 7.11, "j": 6.0, "f": 1.0}
+
+
+def test_extract_sentiments_array_returns_none_when_no_words_match(monkeypatch) -> None:
+    monkeypatch.setattr(
+        sentiments,
+        "extract_sentiments",
+        lambda _word, _language: None,
+    )
+
+    result = sentiments.extract_sentiments_array(([], ["Unknown"], []), "en")
+
+    assert result is None
+
+
 def test_extract_sentiments_with_real_english_model() -> None:
     try:
         sentiments._get_memolon_model("en")

@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
+from statistics import median
 from pathlib import Path
-from typing import Any, TypedDict
+from typing import Any, Sequence, TypedDict, cast
 
 from news_deframer.memolon_models import MEMOLON_LANGUAGE_MODELS
 
@@ -156,3 +157,51 @@ def extract_sentiments(word_to_find: str, language: str) -> Sentiment | None:
                 _set_sentiment_value(sentiment, column_name, value)
 
     return sentiment
+
+
+def extract_sentiments_array(
+    stems: tuple[Sequence[str], Sequence[str], Sequence[str]], language: str
+) -> Sentiment | None:
+    """Return median sentiment scores aggregated across matched words.
+
+    The input typically contains noun, verb, and adjective stems. Each word is
+    looked up independently, missing words are ignored, and the median is taken
+    per sentiment dimension across all matched words.
+    """
+
+    collected_values: dict[str, list[float]] = {
+        key: [] for key in Sentiment.__annotations__
+    }
+
+    for words in stems:
+        for word in words:
+            sentiment = extract_sentiments(word, language)
+            if sentiment is None:
+                continue
+            for key, value in sentiment.items():
+                collected_values[key].append(cast(float, value))
+
+    aggregated: Sentiment = {}
+    for key, values in collected_values.items():
+        if not values:
+            continue
+
+        median_value = round(float(median(values)), 2)
+        if key == "v":
+            aggregated["v"] = median_value
+        elif key == "a":
+            aggregated["a"] = median_value
+        elif key == "d":
+            aggregated["d"] = median_value
+        elif key == "j":
+            aggregated["j"] = median_value
+        elif key == "a_n":
+            aggregated["a_n"] = median_value
+        elif key == "s":
+            aggregated["s"] = median_value
+        elif key == "f":
+            aggregated["f"] = median_value
+        elif key == "d_g":
+            aggregated["d_g"] = median_value
+
+    return aggregated or None

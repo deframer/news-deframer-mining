@@ -11,6 +11,7 @@ from uuid import UUID
 from news_deframer.config import Config
 from news_deframer.postgres import Postgres, Trend
 from news_deframer.nlp import extract_stems, sanitize_text, stem_category
+from news_deframer.sentiments import extract_sentiments_array
 
 
 logger = logging.getLogger(__name__)
@@ -67,6 +68,13 @@ class Miner:
             stop_words=task.stop_words,
             with_ner=with_ner,
         )
+        sentiments = (
+            extract_sentiments_array(
+                (noun_stems, verb_stems, adj_stems),
+                task.language,
+            )
+            or {}
+        )
 
         trend = Trend(
             item_id=task.item_id,
@@ -78,5 +86,6 @@ class Miner:
             verb_stems=list(verb_stems),
             adjective_stems=list(adj_stems),
             root_domain=task.root_domain,
+            sentiments=sentiments,
         )
         self._repository.upsert_trends([trend])

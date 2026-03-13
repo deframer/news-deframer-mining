@@ -164,3 +164,65 @@ def test_upsert_trends(monkeypatch):
     assert tup[1] == trend.feed_id
     assert tup[2] == "en"
     assert tup[4] == ["cat1"]
+
+
+def test_fetch_trends_without_sentiments(monkeypatch):
+    item_id = uuid4()
+    feed_id = uuid4()
+    cursor = CursorStub(
+        fetchall_result=[
+            (
+                item_id,
+                feed_id,
+                "de",
+                datetime(2024, 6, 1, 12, 0, 0),
+                ["wirtschaft"],
+                ["käse"],
+                ["essen"],
+                ["gut"],
+                "example.de",
+                {},
+            )
+        ]
+    )
+    patch_connect(monkeypatch, cursor)
+    repo = postgres_module.Postgres(make_config())
+
+    trends = repo.fetch_trends_without_sentiments()
+
+    assert len(trends) == 1
+    trend = trends[0]
+    assert trend.item_id == item_id
+    assert trend.feed_id == feed_id
+    assert trend.language == "de"
+    assert trend.category_stems == ["wirtschaft"]
+    assert trend.noun_stems == ["käse"]
+    assert trend.verb_stems == ["essen"]
+    assert trend.adjective_stems == ["gut"]
+    assert trend.root_domain == "example.de"
+    assert trend.sentiments == {}
+    assert cursor.execute_calls[-1][1] == (100,)
+
+
+def test_update_trend_sentiments(monkeypatch):
+    cursor = CursorStub()
+    patch_connect(monkeypatch, cursor)
+    repo = postgres_module.Postgres(make_config())
+
+    executed_values = []
+    monkeypatch.setattr(
+        postgres_module,
+        "execute_values",
+        lambda cur, sql, args, **kwargs: executed_values.append((sql, args)),
+    )
+
+    item_id = uuid4()
+    repo.update_trend_sentiments({item_id: {"v": 6.19, "j": 3.28}})
+
+    assert len(executed_values) == 1
+    sql, args_list = executed_values[0]
+    assert "UPDATE trends AS t" in sql
+    assert "t.sentiments = '{}'::jsonb" in sql
+    assert len(args_list) == 1
+    assert args_list[0][0] == item_id
+    assert isinstance(args_list[0][1], postgres_module.Json)

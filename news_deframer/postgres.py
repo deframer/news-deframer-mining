@@ -5,14 +5,15 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Optional
+from typing import Any, Optional
 from uuid import UUID
 
 import psycopg2
-from psycopg2.extras import execute_values, register_uuid
+from psycopg2.extras import Json, execute_values, register_uuid
 
 from news_deframer.config import Config
 from news_deframer.logger import SilentLogger
+from news_deframer.sentiments import Sentiment
 
 
 @dataclass
@@ -45,6 +46,7 @@ class Trend:
     noun_stems: list[str] = field(default_factory=list)
     verb_stems: list[str] = field(default_factory=list)
     adjective_stems: list[str] = field(default_factory=list)
+    sentiments: Sentiment = field(default_factory=lambda: _empty_sentiment())
 
 
 register_uuid()
@@ -217,7 +219,8 @@ class Postgres:
                 noun_stems,
                 verb_stems,
                 adjective_stems,
-                root_domain
+                root_domain,
+                sentiments
             ) VALUES %s
             ON CONFLICT (item_id) DO UPDATE SET
                 feed_id = EXCLUDED.feed_id,
@@ -227,7 +230,8 @@ class Postgres:
                 noun_stems = EXCLUDED.noun_stems,
                 verb_stems = EXCLUDED.verb_stems,
                 adjective_stems = EXCLUDED.adjective_stems,
-                root_domain = EXCLUDED.root_domain
+                root_domain = EXCLUDED.root_domain,
+                sentiments = EXCLUDED.sentiments
         """
 
         values = [
@@ -241,6 +245,7 @@ class Postgres:
                 t.verb_stems,
                 t.adjective_stems,
                 t.root_domain,
+                Json(t.sentiments),
             )
             for t in trends
         ]
@@ -250,6 +255,74 @@ class Postgres:
             with conn.cursor() as cur:
                 execute_values(cur, sql, values)
         self._logger.debug("Upserted %s trends", len(trends))
+
+    def fetch_trends_without_sentiments(self, limit: int = 100) -> list[Trend]:
+        """Fetch trends whose sentiment payload is still empty."""
+        sql = """
+            SELECT
+                item_id,
+                feed_id,
+                language,
+                pub_date,
+                category_stems,
+                noun_stems,
+                verb_stems,
+                adjective_stems,
+                root_domain,
+                sentiments
+            FROM trends
+            WHERE sentiments = '{}'::jsonb
+            ORDER BY pub_date ASC
+            LIMIT %s
+        """
+
+        conn = self._get_connection()
+        with conn:
+            with conn.cursor() as cur:
+                cur.execute(sql, (max(int(limit), 0),))
+                rows = cur.fetchall()
+                trends = [
+                    Trend(
+                        item_id=row[0],
+                        feed_id=row[1],
+                        language=row[2],
+                        pub_date=row[3],
+                        category_stems=list(row[4] or []),
+                        noun_stems=list(row[5] or []),
+                        verb_stems=list(row[6] or []),
+                        adjective_stems=list(row[7] or []),
+                        root_domain=row[8],
+                        sentiments=_coerce_sentiment(row[9]),
+                    )
+                    for row in rows
+                ]
+        self._logger.debug("Fetched %s trends without sentiments", len(trends))
+        return trends
+
+    def update_trend_sentiments(
+        self, sentiments_by_item_id: dict[UUID, Sentiment]
+    ) -> None:
+        """Batch update trend sentiments when the target rows are still empty."""
+        if not sentiments_by_item_id:
+            return
+
+        sql = """
+            UPDATE trends AS t
+            SET sentiments = data.sentiments::jsonb
+            FROM (VALUES %s) AS data(item_id, sentiments)
+            WHERE t.item_id = data.item_id
+              AND t.sentiments = '{}'::jsonb
+        """
+        values = [
+            (item_id, Json(sentiment))
+            for item_id, sentiment in sentiments_by_item_id.items()
+        ]
+
+        conn = self._get_connection()
+        with conn:
+            with conn.cursor() as cur:
+                execute_values(cur, sql, values)
+        self._logger.debug("Updated sentiments for %s trends", len(values))
 
 
 def _normalize_language_value(value: Optional[str]) -> Optional[str]:
@@ -262,3 +335,37 @@ def _normalize_language_value(value: Optional[str]) -> Optional[str]:
     if len(stripped) >= 2:
         return stripped[:2]
     return None
+
+
+def _empty_sentiment() -> Sentiment:
+    return {}
+
+
+def _coerce_sentiment(value: Any) -> Sentiment:
+    if not isinstance(value, dict):
+        return {}
+
+    sentiment: Sentiment = {}
+    for key in ("v", "a", "d", "j", "a_n", "s", "f", "d_g"):
+        raw = value.get(key)
+        if raw is None:
+            continue
+        numeric = float(raw)
+        if key == "v":
+            sentiment["v"] = numeric
+        elif key == "a":
+            sentiment["a"] = numeric
+        elif key == "d":
+            sentiment["d"] = numeric
+        elif key == "j":
+            sentiment["j"] = numeric
+        elif key == "a_n":
+            sentiment["a_n"] = numeric
+        elif key == "s":
+            sentiment["s"] = numeric
+        elif key == "f":
+            sentiment["f"] = numeric
+        elif key == "d_g":
+            sentiment["d_g"] = numeric
+
+    return sentiment

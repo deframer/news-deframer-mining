@@ -1,4 +1,4 @@
-.PHONY: all build clean test help lint format type-check fix start stop down logs zap run sync duckdb-ui FORCE download-models
+.PHONY: all build clean test help lint format type-check fix start stop down logs zap run sync duckdb-ui FORCE download-models sentiment-update
 
 APP_NAME := miner
 DOCKER_REPO := ghcr.io/deframer/news-deframer-mining
@@ -39,6 +39,9 @@ miner:
 # export MEMOLON_MODELS="en de"
 download-models:
 	uv run python -m news_deframer.cli.download_models
+
+sentiment-update:
+	uv run python -m news_deframer.cli.sentiment_update
 
 docker-build:
 	docker build -t $(DOCKER_REPO)/$(APP_NAME):latest -f build/package/mining/Dockerfile .
