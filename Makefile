@@ -35,6 +35,8 @@ miner:
 
 # additional languages of the spaCy models - https://github.com/explosion/spacy-models
 # export SPACY_MODELS="sl uk es"
+# additional languages for the Memolon models - https://github.com/deframer/memolon-parquet
+# export MEMOLON_MODELS="en de"
 download-models:
 	uv run python -m news_deframer.cli.download_models
 
