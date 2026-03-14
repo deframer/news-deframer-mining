@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from statistics import median
+from statistics import mean
 from pathlib import Path
 from typing import Any, Sequence, TypedDict, cast
 
@@ -15,6 +15,20 @@ except Exception:  # pragma: no cover - optional dependency behavior
 
 
 _MEMOLON_CACHE: dict[str, tuple[Any, list[str]]] = {}
+
+# Aggregation motivation:
+# - Median is robust to outliers, but in NLP those "outliers" are often the
+#   emotionally meaningful words we want to preserve.
+# - Stop-words should be filtered before sentiment aggregation so neutral filler
+#   terms do not wash out the signal; this pipeline does that upstream.
+# - VAD dimensions (valence, arousal, dominance) describe overall mood, so mean
+#   pooling is a better fit than median for combining multiple matched words.
+# - BE5 dimensions (joy, anger, sadness, fear, disgust) describe discrete
+#   emotional intensity, so max pooling better preserves strong spikes.
+# - Average/mean is also a valid BE5 option when a smoother aggregate is more
+#   useful than preserving the strongest emotional cue, but it will mute peaks.
+
+_VAD_KEYS = frozenset({"v", "a", "d"})
 
 
 class Sentiment(TypedDict, total=False):
@@ -178,11 +192,12 @@ def extract_sentiments(word_to_find: str, language: str) -> Sentiment | None:
 def extract_sentiments_array(
     stems: tuple[Sequence[str], Sequence[str], Sequence[str]], language: str
 ) -> Sentiment | None:
-    """Return median sentiment scores aggregated across matched words.
+    """Return aggregated sentiment scores across matched words.
 
     The input typically contains noun, verb, and adjective stems. Each word is
-    looked up independently, missing words are ignored, and the median is taken
-    per sentiment dimension across all matched words.
+    looked up independently, missing words are ignored, VAD dimensions are
+    averaged, and BE5 dimensions use max pooling. Mean/average is also a
+    reasonable BE5 alternative when a smoother aggregate is preferred.
     """
 
     collected_values: dict[str, list[float]] = {
@@ -202,22 +217,23 @@ def extract_sentiments_array(
         if not values:
             continue
 
-        median_value = round(float(median(values)), 2)
+        aggregate_value = mean(values) if key in _VAD_KEYS else max(values)
+        rounded_value = round(float(aggregate_value), 2)
         if key == "v":
-            aggregated["v"] = median_value
+            aggregated["v"] = rounded_value
         elif key == "a":
-            aggregated["a"] = median_value
+            aggregated["a"] = rounded_value
         elif key == "d":
-            aggregated["d"] = median_value
+            aggregated["d"] = rounded_value
         elif key == "j":
-            aggregated["j"] = median_value
+            aggregated["j"] = rounded_value
         elif key == "a_n":
-            aggregated["a_n"] = median_value
+            aggregated["a_n"] = rounded_value
         elif key == "s":
-            aggregated["s"] = median_value
+            aggregated["s"] = rounded_value
         elif key == "f":
-            aggregated["f"] = median_value
+            aggregated["f"] = rounded_value
         elif key == "d_g":
-            aggregated["d_g"] = median_value
+            aggregated["d_g"] = rounded_value
 
     return aggregated or None

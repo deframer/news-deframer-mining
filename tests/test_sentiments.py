@@ -134,11 +134,13 @@ def test_extract_sentiments_returns_none_for_missing_word(monkeypatch) -> None:
     assert sentiments.extract_sentiments("Butter", "en") is None
 
 
-def test_extract_sentiments_array_returns_medians(monkeypatch) -> None:
+def test_extract_sentiments_array_uses_mean_for_vad_and_max_for_be5(
+    monkeypatch,
+) -> None:
     lookup = {
-        "cheese": {"v": 7.111, "j": 6.0, "f": 1.0},
-        "bread": {"v": 5.555, "j": 4.0, "f": 2.0},
-        "happy": {"v": 8.888, "j": 7.0, "f": 1.0},
+        "cheese": {"v": 7.111, "a": 3.0, "j": 2.5, "f": 1.0},
+        "bread": {"v": 5.555, "a": 5.0, "j": 4.0, "f": 2.0},
+        "happy": {"v": 8.888, "a": 7.0, "j": 7.0, "f": 1.0},
     }
 
     monkeypatch.setattr(
@@ -152,7 +154,7 @@ def test_extract_sentiments_array_returns_medians(monkeypatch) -> None:
         "en",
     )
 
-    assert result == {"v": 7.11, "j": 6.0, "f": 1.0}
+    assert result == {"v": 7.18, "a": 5.0, "j": 7.0, "f": 2.0}
 
 
 def test_extract_sentiments_array_returns_none_when_no_words_match(monkeypatch) -> None:
