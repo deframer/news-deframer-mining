@@ -5,6 +5,7 @@ from uuid import uuid4
 import pytest
 
 from news_deframer import nlp
+import news_deframer.miner as miner_module
 from news_deframer.config import Config
 from news_deframer.miner import Miner, MiningTask
 from news_deframer.postgres import Postgres, Trend
@@ -22,7 +23,7 @@ def make_config() -> Config:
     return Config(dsn="", log_level="INFO", log_database=False)
 
 
-def test_mine_item_upserts_trend():
+def test_mine_item_upserts_trend(monkeypatch):
     try:
         nlp._get_spacy_model("en")
     except RuntimeError:
@@ -30,14 +31,19 @@ def test_mine_item_upserts_trend():
 
     repo = RepositoryStub()
     miner = Miner(make_config(), repository=cast(Postgres, repo))
+    monkeypatch.setattr(
+        miner_module, "extract_sentiments_array", lambda stems, language: {"v": 6.19}
+    )
     task = MiningTask(
         feed_id=uuid4(),
         feed_url="https://feed",
         item_id=uuid4(),
         language="en",
         categories=["a"],
-        title="Title of Nouns",
-        description="The verbs run now",
+        title_deframed=None,
+        description_deframed=None,
+        title_original="Title of Nouns",
+        description_original="The verbs run now",
         pub_date=datetime(2024, 1, 1, 12, 0, 0),
         root_domain="example.com",
     )
@@ -51,6 +57,7 @@ def test_mine_item_upserts_trend():
     assert stored_trend.language == task.language
     assert stored_trend.noun_stems == ["nouns", "title", "verb"]
     assert stored_trend.verb_stems == ["run"]
+    assert stored_trend.sentiments == {"v": 6.19}
 
 
 @pytest.mark.parametrize(
@@ -85,6 +92,7 @@ def test_miner_stem_extraction_real_models(
     description: str,
     expected_nouns: list[str],
     expected_verbs: list[str],
+    monkeypatch,
 ):
     try:
         nlp._get_spacy_model(language)
@@ -93,14 +101,19 @@ def test_miner_stem_extraction_real_models(
 
     repo = RepositoryStub()
     miner = Miner(make_config(), repository=cast(Postgres, repo))
+    monkeypatch.setattr(
+        miner_module, "extract_sentiments_array", lambda stems, sentiment_language: {}
+    )
     task = MiningTask(
         feed_id=uuid4(),
         feed_url="https://feed",
         item_id=uuid4(),
         language=language,
         categories=["a"],
-        title=title,
-        description=description,
+        title_deframed=None,
+        description_deframed=None,
+        title_original=title,
+        description_original=description,
         pub_date=datetime(2024, 1, 1, 12, 0, 0),
         root_domain="example.com",
     )
@@ -113,7 +126,7 @@ def test_miner_stem_extraction_real_models(
     assert stored_trend.verb_stems == expected_verbs
 
 
-def test_mine_item_filters_stop_words():
+def test_mine_item_filters_stop_words(monkeypatch):
     try:
         nlp._get_spacy_model("en")
     except RuntimeError:
@@ -121,14 +134,19 @@ def test_mine_item_filters_stop_words():
 
     repo = RepositoryStub()
     miner = Miner(make_config(), repository=cast(Postgres, repo))
+    monkeypatch.setattr(
+        miner_module, "extract_sentiments_array", lambda stems, sentiment_language: {}
+    )
     task = MiningTask(
         feed_id=uuid4(),
         feed_url="https://feed",
         item_id=uuid4(),
         language="en",
         categories=[],
-        title="The Fox",
-        description="The Dog",
+        title_deframed=None,
+        description_deframed=None,
+        title_original="The Fox",
+        description_original="The Dog",
         pub_date=datetime(2024, 1, 1, 12, 0, 0),
         root_domain="example.com",
         stop_words=["fox"],

@@ -6,7 +6,6 @@ from news_deframer.config import Config, DEFAULT_LOCK_DURATION, POLLING_INTERVAL
 from news_deframer.postgres import Feed, Item, Postgres
 from news_deframer.miner import Miner, MiningTask
 from news_deframer.poller import (
-    _extract_title_and_description,
     poll_feed,
     poll_next_feed,
 )
@@ -76,8 +75,10 @@ def test_poll_next_feed_success_calls_end_update(monkeypatch) -> None:
                 item_id=feed.id,
                 language="en",
                 categories=[],
-                title=None,
-                description=None,
+                title_deframed=None,
+                description_deframed=None,
+                title_original=None,
+                description_original=None,
                 pub_date=datetime(2024, 1, 1, 0, 0, 0),
                 root_domain="example.com",
             )
@@ -182,54 +183,6 @@ def test_poll_feed_returns_error(monkeypatch, caplog) -> None:
 
     assert isinstance(error, RuntimeError)
     assert any("Failed to process item" in record.message for record in caplog.records)
-
-
-def test_extract_title_and_description_success() -> None:
-    content = """
-    <item>
-      <deframer:title_original>
-        Boost Your Productivity
-      </deframer:title_original>
-      <deframer:description_original>
-        Simple Tips
-      </deframer:description_original>
-      <title>Ignored Standard Title</title>
-    </item>
-    """
-    title, description = _extract_title_and_description(content)
-    assert title == "Boost Your Productivity"
-    assert description == "Simple Tips"
-
-
-def test_extract_title_and_description_ignores_standard_tags() -> None:
-    content = """
-    <item>
-      <title>Standard Title</title>
-      <description>Standard Description</description>
-    </item>
-    """
-    title, description = _extract_title_and_description(content)
-    assert title is None
-    assert description is None
-
-
-def test_extract_title_and_description_handles_malformed_xml() -> None:
-    content = "<item><title>Unclosed"
-    title, description = _extract_title_and_description(content)
-    assert title is None
-    assert description is None
-
-
-def test_extract_title_and_description_with_unknown_namespaces() -> None:
-    content = """<item>
-  <deframer:title_original>Extracted Title</deframer:title_original>
-  <deframer:description_original>Extracted Description</deframer:description_original>
-  <wfw:commentRss>http://example.com/feed</wfw:commentRss>
-  <slash:comments>10</slash:comments>
-</item>"""
-    title, description = _extract_title_and_description(content)
-    assert title == "Extracted Title"
-    assert description == "Extracted Description"
 
 
 def test_poll_feed_splits_base_domain_stop_words() -> None:
