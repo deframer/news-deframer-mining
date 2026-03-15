@@ -9,6 +9,9 @@ from news_deframer.config import Config
 from news_deframer.logger import configure_logging
 from news_deframer.postgres import Postgres
 from news_deframer.sentiments import extract_sentiments_array
+from news_deframer.netutil import get_base_domain_name
+from news_deframer.item_content_parser import extract_title_and_description
+from news_deframer.nlp import extract_stems, sanitize_text
 
 logger = logging.getLogger(__name__)
 
@@ -19,11 +22,12 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     config = Config.load()
     configure_logging(config.log_level)
     repository = Postgres(config)
-    trends, items_and_feeds = repository.fetch_trends_without_sentiments(limit=10)
+    trends, items_and_feeds = repository.fetch_trends_without_sentiments(limit=5000)
     logger.info("Fetched %d trends for sentiment updates", len(trends))
     _ = items_and_feeds
     updates_sentiment = {}
     updates_deframed_sentiment = {}
+    with_ner = False
 
     for trend in trends:
         if trend.sentiments == {}:
@@ -39,16 +43,49 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         if trend.sentiments_deframed == {}:
             # We know this item_id exists in items_and_feeds because that's how fetch_trends_without_sentiments works
             item, feed = items_and_feeds[trend.item_id]
-            # Log if sentiments_deframed is empty
-            logger.info(
-                "Trend %s has empty sentiments_deframed - feed categories length: %d, item content length: %d",
-                trend.item_id,
-                len(feed.categories),
-                len(item.content),
+
+            base_domain = get_base_domain_name(feed.url)
+
+            # we split here for apollo-news also at the -
+            stop_words = (
+                [w for w in base_domain.split("-") if len(w) >= 3]
+                if base_domain
+                else []
             )
 
-    #repository.update_trend_sentiments(updates_sentiment)
-    #repository.update_trend_deframed_sentiments(updates_deframed_sentiment)
+            content = extract_title_and_description(item.content, item_id=item.id)
+
+            content.title_deframed = sanitize_text(content.title_deframed)
+            content.description_deframed = sanitize_text(content.description_deframed)
+            content_deframed = f"{content.title_deframed}{' ' if content.title_deframed else ''}{content.description_deframed}"
+
+            noun_stems_deframed, verb_stems_deframed, adj_stems_deframed = (
+                extract_stems(
+                    content_deframed,
+                    trend.language,
+                    stop_words=stop_words,
+                    with_ner=with_ner,
+                )
+            )
+            sentiments_deframed = (
+                extract_sentiments_array(
+                    (noun_stems_deframed, verb_stems_deframed, adj_stems_deframed),
+                    trend.language,
+                )
+                or {}
+            )
+
+            # Add to updates only if sentiments_deframed is not None
+            if sentiments_deframed is not None:
+                updates_deframed_sentiment[trend.item_id] = sentiments_deframed
+
+    repository.update_trend_sentiments(updates_sentiment)
+    repository.update_trend_deframed_sentiments(updates_deframed_sentiment)
+    logger.info(
+        "Updated %d sentiments and %d deframed sentiments",
+        len(updates_sentiment),
+        len(updates_deframed_sentiment),
+    )
 
     return 0
 

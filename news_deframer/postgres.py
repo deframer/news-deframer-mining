@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any, Optional, Tuple, Dict
+from typing import Any, Optional
 from uuid import UUID
 
 import psycopg2

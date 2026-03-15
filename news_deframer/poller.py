@@ -2,13 +2,11 @@
 
 from __future__ import annotations
 
-from html.parser import HTMLParser
 import logging
 import signal
 import time
 from types import FrameType
 from typing import Any, Optional, cast
-from uuid import UUID
 
 from news_deframer.config import (
     DEFAULT_LOCK_DURATION,
@@ -16,6 +14,7 @@ from news_deframer.config import (
     POLLING_INTERVAL,
     Config,
 )
+from news_deframer.item_content_parser import extract_title_and_description
 from news_deframer.netutil import (
     flush_domain_cache,
     get_base_domain_name,
@@ -160,7 +159,7 @@ def _build_task(feed: Feed, item: Item) -> MiningTask:
         [w for w in base_domain.split("-") if len(w) >= 3] if base_domain else []
     )
 
-    title, description = _extract_title_and_description(item.content, item_id=item.id)
+    content_result = extract_title_and_description(item.content, item_id=item.id)
     return MiningTask(
         feed_id=feed.id,
         feed_url=feed.url,
@@ -168,51 +167,10 @@ def _build_task(feed: Feed, item: Item) -> MiningTask:
         item_id=item.id,
         language=language,
         categories=categories,
-        title=title,
-        description=description,
+        title_deframed=content_result.title_deframed,
+        description_deframed=content_result.description_deframed,
+        title_original=content_result.title_original,
+        description_original=content_result.description_original,
         pub_date=item.pub_date,
         stop_words=stop_words,
     )
-
-
-class _DeframerParser(HTMLParser):
-    def __init__(self) -> None:
-        super().__init__()
-        self.data: dict[str, Optional[str]] = {
-            "deframer:title_original": None,
-            "deframer:description_original": None,
-        }
-        self._current: Optional[str] = None
-        self._buffer: list[str] = []
-
-    def handle_starttag(self, tag: str, attrs: list[tuple[str, Optional[str]]]) -> None:
-        if tag in self.data:
-            self._current = tag
-            self._buffer = []
-
-    def handle_endtag(self, tag: str) -> None:
-        if tag == self._current:
-            self.data[tag] = "".join(self._buffer).strip() or None
-            self._current = None
-
-    def handle_data(self, data: str) -> None:
-        if self._current:
-            self._buffer.append(data)
-
-
-def _extract_title_and_description(
-    content: str, item_id: Optional[UUID] = None
-) -> tuple[Optional[str], Optional[str]]:
-    parser = _DeframerParser()
-    try:
-        parser.feed(content)
-        parser.close()
-    except Exception as exc:
-        if item_id:
-            logger.error(
-                "Failed to parse content", extra={"item_id": str(item_id)}, exc_info=exc
-            )
-        return None, None
-    return parser.data["deframer:title_original"], parser.data[
-        "deframer:description_original"
-    ]
