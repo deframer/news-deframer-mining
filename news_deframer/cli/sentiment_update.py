@@ -22,7 +22,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     config = Config.load()
     configure_logging(config.log_level)
     repository = Postgres(config)
-    trends, items_and_feeds = repository.fetch_trends_without_sentiments(limit=5000)
+    trends, items_and_feeds = repository.fetch_trends_without_sentiments(limit=100)
     logger.info("Fetched %d trends for sentiment updates", len(trends))
     _ = items_and_feeds
     updates_sentiment = {}
