@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any, Optional, Tuple, Dict
 from uuid import UUID
 
 import psycopg2
@@ -47,6 +47,7 @@ class Trend:
     verb_stems: list[str] = field(default_factory=list)
     adjective_stems: list[str] = field(default_factory=list)
     sentiments: Sentiment = field(default_factory=lambda: _empty_sentiment())
+    sentiments_deframed: Sentiment = field(default_factory=lambda: _empty_sentiment())
 
 
 register_uuid()
@@ -66,7 +67,7 @@ class Postgres:
             self._logger = SilentLogger()
 
     def _get_connection(self):
-        if self._conn is None or self._conn.closed:
+        if self._conn is None or (hasattr(self._conn, "closed") and self._conn.closed):
             self._conn = psycopg2.connect(self.config.dsn)
         return self._conn
 
@@ -204,6 +205,78 @@ class Postgres:
                 )
                 return items
 
+    def _fetch_items_by_ids(self, item_ids: list[UUID]) -> dict[UUID, Item]:
+        """Fetch items by their IDs."""
+        if not item_ids:
+            return {}
+
+        # Use execute_values approach for safe parameter substitution
+        placeholders = ",".join(["%s"] * len(item_ids))
+        sql = f"""
+            SELECT
+                i.id,
+                i.feed_id,
+                i.categories,
+                i.language,
+                i.pub_date,
+                i.content
+            FROM items i
+            WHERE i.id IN ({placeholders})
+        """
+
+        conn = self._get_connection()
+        with conn:
+            with conn.cursor() as cur:
+                cur.execute(sql, item_ids)
+                rows = cur.fetchall()
+                items = {}
+                for row in rows:
+                    item = Item(
+                        id=row[0],
+                        feed_id=row[1],
+                        categories=list(row[2] or []),
+                        language=_normalize_language_value(row[3]),
+                        pub_date=row[4],
+                        content=row[5],
+                    )
+                    items[row[0]] = item
+                return items
+
+    def _fetch_feeds_by_ids(self, feed_ids: list[UUID]) -> dict[UUID, Feed]:
+        """Fetch feeds by their IDs."""
+        if not feed_ids:
+            return {}
+
+        # Use execute_values approach for safe parameter substitution
+        placeholders = ",".join(["%s"] * len(feed_ids))
+        sql = f"""
+            SELECT
+                f.id,
+                f.url,
+                f.categories,
+                f.language,
+                f.root_domain
+            FROM feeds f
+            WHERE f.id IN ({placeholders})
+        """
+
+        conn = self._get_connection()
+        with conn:
+            with conn.cursor() as cur:
+                cur.execute(sql, feed_ids)
+                rows = cur.fetchall()
+                feeds = {}
+                for row in rows:
+                    feed = Feed(
+                        id=row[0],
+                        url=row[1],
+                        categories=list(row[2] or []),
+                        language=_normalize_language_value(row[3]),
+                        root_domain=row[4],
+                    )
+                    feeds[row[0]] = feed
+                return feeds
+
     def upsert_trends(self, trends: list[Trend]) -> None:
         """Insert or update multiple trend records in batch."""
         if not trends:
@@ -220,7 +293,8 @@ class Postgres:
                 verb_stems,
                 adjective_stems,
                 root_domain,
-                sentiments
+                sentiments,
+                sentiments_deframed
             ) VALUES %s
             ON CONFLICT (item_id) DO UPDATE SET
                 feed_id = EXCLUDED.feed_id,
@@ -231,7 +305,8 @@ class Postgres:
                 verb_stems = EXCLUDED.verb_stems,
                 adjective_stems = EXCLUDED.adjective_stems,
                 root_domain = EXCLUDED.root_domain,
-                sentiments = EXCLUDED.sentiments
+                sentiments = EXCLUDED.sentiments,
+                sentiments_deframed = EXCLUDED.sentiments_deframed
         """
 
         values = [
@@ -246,6 +321,7 @@ class Postgres:
                 t.adjective_stems,
                 t.root_domain,
                 Json(t.sentiments),
+                Json(t.sentiments_deframed),
             )
             for t in trends
         ]
@@ -256,33 +332,43 @@ class Postgres:
                 execute_values(cur, sql, values)
         self._logger.debug("Upserted %s trends", len(trends))
 
-    def fetch_trends_without_sentiments(self, limit: int = 100) -> list[Trend]:
+    def fetch_trends_without_sentiments(
+        self, limit: int = 100
+    ) -> tuple[list[Trend], dict[UUID, tuple[Item, Feed]]]:
         """Fetch trends whose sentiment payload is still empty."""
-        sql = """
+        # First, get the trends that need processing (without item and feed data to avoid transferring large content unnecessarily)
+        sql_trends = """
             SELECT
-                item_id,
-                feed_id,
-                language,
-                pub_date,
-                category_stems,
-                noun_stems,
-                verb_stems,
-                adjective_stems,
-                root_domain,
-                sentiments
-            FROM trends
-            WHERE sentiments = '{}'::jsonb
-            ORDER BY pub_date ASC
+                t.item_id,
+                t.feed_id,
+                t.language,
+                t.pub_date,
+                t.category_stems,
+                t.noun_stems,
+                t.verb_stems,
+                t.adjective_stems,
+                t.root_domain,
+                t.sentiments,
+                t.sentiments_deframed
+            FROM trends t
+            WHERE t.sentiments = '{}'::jsonb OR t.sentiments_deframed = '{}'::jsonb
+            ORDER BY t.pub_date ASC
             LIMIT %s
         """
 
         conn = self._get_connection()
         with conn:
             with conn.cursor() as cur:
-                cur.execute(sql, (max(int(limit), 0),))
+                cur.execute(sql_trends, (max(int(limit), 0),))
                 rows = cur.fetchall()
-                trends = [
-                    Trend(
+
+                # Build Trend objects and identify which ones need item/feed data
+                trends = []
+                item_ids_needed = (
+                    set()
+                )  # item_ids where we need to load full item/feed data
+                for row in rows:
+                    trend = Trend(
                         item_id=row[0],
                         feed_id=row[1],
                         language=row[2],
@@ -293,11 +379,35 @@ class Postgres:
                         adjective_stems=list(row[7] or []),
                         root_domain=row[8],
                         sentiments=_coerce_sentiment(row[9]),
+                        sentiments_deframed=_coerce_sentiment(row[10]),
                     )
-                    for row in rows
-                ]
+                    trends.append(trend)
+
+                    # Only load full item and feed when sentiments_deframed is empty
+                    if row[10] == {}:  # sentiments_deframed is empty
+                        item_ids_needed.add(row[0])
+
+        # If we need item/feed data, fetch it in batches
+        item_feed_map: dict[UUID, tuple[Item, Feed]] = {}
+        if item_ids_needed:
+            # Fetch all needed items in one query
+            items_by_id = self._fetch_items_by_ids(list(item_ids_needed))
+
+            # Get unique feed_ids from the items we fetched
+            feed_ids_needed = {item.feed_id for item in items_by_id.values()}
+
+            # Fetch all needed feeds in one query
+            feeds_by_id = self._fetch_feeds_by_ids(list(feed_ids_needed))
+
+            # Combine items and feeds into the map
+            for item_id in item_ids_needed:
+                if item_id in items_by_id:
+                    item = items_by_id[item_id]
+                    if item.feed_id in feeds_by_id:
+                        item_feed_map[item_id] = (item, feeds_by_id[item.feed_id])
+
         self._logger.debug("Fetched %s trends without sentiments", len(trends))
-        return trends
+        return trends, item_feed_map
 
     def update_trend_sentiments(
         self, sentiments_by_item_id: dict[UUID, Sentiment]
@@ -323,6 +433,31 @@ class Postgres:
             with conn.cursor() as cur:
                 execute_values(cur, sql, values)
         self._logger.debug("Updated sentiments for %s trends", len(values))
+
+    def update_trend_deframed_sentiments(
+        self, sentiments_by_item_id: dict[UUID, Sentiment]
+    ) -> None:
+        """Batch update trend deframed sentiments when the target rows are still empty."""
+        if not sentiments_by_item_id:
+            return
+
+        sql = """
+            UPDATE trends AS t
+            SET sentiments_deframed = data.sentiments::jsonb
+            FROM (VALUES %s) AS data(item_id, sentiments)
+            WHERE t.item_id = data.item_id
+              AND t.sentiments_deframed = '{}'::jsonb
+        """
+        values = [
+            (item_id, Json(sentiment))
+            for item_id, sentiment in sentiments_by_item_id.items()
+        ]
+
+        conn = self._get_connection()
+        with conn:
+            with conn.cursor() as cur:
+                execute_values(cur, sql, values)
+        self._logger.debug("Updated deframed sentiments for %s trends", len(values))
 
 
 def _normalize_language_value(value: Optional[str]) -> Optional[str]:
