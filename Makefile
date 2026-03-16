@@ -44,8 +44,8 @@ download-models:
 sentiment-update:
 	uv run python -m news_deframer.cli.sentiment_update
 
-# Example: echo "This is a very happy and joyful day!" | make analize-text
-# Example German: echo "Das ist ein sehr schöner Tag!" | TEXT_LANGUAGE=de make analize-text
+# Example: echo "This is a very happy and joyful day!" | make analize-text | sed '1d' | jq -c
+# Example German: echo "Das ist ein sehr schöner Tag!" | TEXT_LANGUAGE=de make analize-text | sed '1d' | jq -c
 analize-text:
 	uv run python -m news_deframer.cli.analize_text -l "$(TEXT_LANGUAGE)"
 
