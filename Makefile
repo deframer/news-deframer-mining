@@ -1,6 +1,7 @@
-.PHONY: all build clean test help lint format type-check fix start stop down logs zap run sync duckdb-ui FORCE download-models sentiment-update
+.PHONY: all build clean test help lint format type-check fix start stop down logs zap run sync duckdb-ui FORCE download-models sentiment-update analize-text
 
 APP_NAME := miner
+TEXT_LANGUAGE ?= en
 DOCKER_REPO := ghcr.io/deframer/news-deframer-mining
 DOCKER_COMPOSE_FILE ?= docker-compose.yml
 COMPOSE_ENV_FILE ?= .env-compose
@@ -42,6 +43,11 @@ download-models:
 
 sentiment-update:
 	uv run python -m news_deframer.cli.sentiment_update
+
+# Example: echo "This is a very happy and joyful day!" | make analize-text
+# Example German: echo "Das ist ein sehr schöner Tag!" | TEXT_LANGUAGE=de make analize-text
+analize-text:
+	uv run python -m news_deframer.cli.analize_text -l "$(TEXT_LANGUAGE)"
 
 docker-build:
 	docker build -t $(DOCKER_REPO)/$(APP_NAME):latest -f build/package/mining/Dockerfile .
