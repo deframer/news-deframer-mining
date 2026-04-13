@@ -12,7 +12,7 @@ dependencies = [
     "pyarrow",
     "python-dotenv",
     "publicsuffix2",
-    "spacy>=3.8.0,<3.10.0",
+    "spacy>=3.8.14,<3.10.0",
     "en-core-web-lg @ https://github.com/explosion/spacy-models/releases/download/en_core_web_lg-3.8.0/en_core_web_lg-3.8.0-py3-none-any.whl"
 ]
 
