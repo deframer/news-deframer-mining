@@ -117,7 +117,10 @@ def test_fetch_pending_items(monkeypatch):
                 ["x"],
                 "es",
                 datetime(2024, 6, 1, 12, 0, 0),
-                "raw content",
+                "Raw title",
+                "Corrected title",
+                "Raw description",
+                "Corrected description",
             ),
         ],
     ]
@@ -132,7 +135,12 @@ def test_fetch_pending_items(monkeypatch):
     assert items[0].categories == ["x"]
     assert items[0].language == "es"
     assert items[0].pub_date == datetime(2024, 6, 1, 12, 0, 0)
-    assert items[0].content == "raw content"
+    assert items[0].think_result is not None
+    assert items[0].think_result.title_original == "Raw title"
+    assert items[0].think_result.description_corrected == "Corrected description"
+    sql = cursor.execute_calls[0][0]
+    assert "i.think_result->>'title_original'" in sql
+    assert "i.think_result->>'description_corrected'" in sql
 
 
 def test_upsert_trends(monkeypatch):
@@ -190,8 +198,22 @@ def test_fetch_trends_without_sentiments(monkeypatch):
                 ["essen"],
                 ["gut"],
                 "example.de",
-                {},
-                {},
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
             )
         ],
         # Second call: items query (_fetch_items_by_ids)
@@ -202,7 +224,10 @@ def test_fetch_trends_without_sentiments(monkeypatch):
                 ["wirtschaft"],
                 "de",
                 datetime(2024, 6, 1, 12, 0, 0),
-                "item content",
+                "Original title",
+                "Corrected title",
+                "Original description",
+                "Corrected description",
             )
         ],
         # Third call: feeds query (_fetch_feeds_by_ids)
@@ -241,7 +266,11 @@ def test_fetch_trends_without_sentiments(monkeypatch):
     assert item.categories == ["wirtschaft"]
     assert item.language == "de"
     assert item.pub_date == datetime(2024, 6, 1, 12, 0, 0)
-    assert item.content == "item content"
+    assert item.think_result is not None
+    assert item.think_result.title_corrected == "Corrected title"
+    items_sql = cursor.execute_calls[1][0]
+    assert "i.think_result->>'title_original'" in items_sql
+    assert "i.think_error_count = 0" in items_sql
     assert feed.id == feed_id
     assert feed.url == "https://feed.example"
     assert feed.categories == ["wirtschaft"]
@@ -249,6 +278,9 @@ def test_fetch_trends_without_sentiments(monkeypatch):
     assert feed.root_domain == "example.de"
     # Check that we made 3 calls: trends, items, feeds
     assert len(cursor.execute_calls) >= 3
+    trends_sql = cursor.execute_calls[0][0]
+    assert "t.sentiments->>'v'" in trends_sql
+    assert "t.sentiments_deframed->>'d_g'" in trends_sql
 
 
 def test_update_trend_sentiments(monkeypatch):

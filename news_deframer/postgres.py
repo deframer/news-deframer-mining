@@ -26,13 +26,21 @@ class Feed:
 
 
 @dataclass
+class ThinkResult:
+    title_original: Optional[str] = None
+    title_corrected: Optional[str] = None
+    description_original: Optional[str] = None
+    description_corrected: Optional[str] = None
+
+
+@dataclass
 class Item:
     id: UUID
     feed_id: UUID
-    content: str
     pub_date: datetime
     categories: list[str] = field(default_factory=list)
     language: Optional[str] = None
+    think_result: Optional[ThinkResult] = None
 
 
 @dataclass
@@ -176,10 +184,15 @@ class Postgres:
                 i.categories,
                 i.language,
                 i.pub_date,
-                i.content
+                i.think_result->>'title_original' AS title_original,
+                i.think_result->>'title_corrected' AS title_corrected,
+                i.think_result->>'description_original' AS description_original,
+                i.think_result->>'description_corrected' AS description_corrected
             FROM items i
             LEFT JOIN trends t ON t.item_id = i.id
             WHERE i.feed_id = %s
+              AND i.think_result IS NOT NULL
+              AND i.think_error_count = 0
               AND t.item_id IS NULL
         """
 
@@ -195,7 +208,12 @@ class Postgres:
                         categories=list(row[2] or []),
                         language=_normalize_language_value(row[3]),
                         pub_date=row[4],
-                        content=row[5],
+                        think_result=ThinkResult(
+                            title_original=row[5],
+                            title_corrected=row[6],
+                            description_original=row[7],
+                            description_corrected=row[8],
+                        ),
                     )
                     for row in rows
                 ]
@@ -219,9 +237,14 @@ class Postgres:
                 i.categories,
                 i.language,
                 i.pub_date,
-                i.content
+                i.think_result->>'title_original' AS title_original,
+                i.think_result->>'title_corrected' AS title_corrected,
+                i.think_result->>'description_original' AS description_original,
+                i.think_result->>'description_corrected' AS description_corrected
             FROM items i
             WHERE i.id IN ({placeholders})
+              AND i.think_result IS NOT NULL
+              AND i.think_error_count = 0
         """
 
         conn = self._get_connection()
@@ -237,7 +260,12 @@ class Postgres:
                         categories=list(row[2] or []),
                         language=_normalize_language_value(row[3]),
                         pub_date=row[4],
-                        content=row[5],
+                        think_result=ThinkResult(
+                            title_original=row[5],
+                            title_corrected=row[6],
+                            description_original=row[7],
+                            description_corrected=row[8],
+                        ),
                     )
                     items[row[0]] = item
                 return items
@@ -348,8 +376,22 @@ class Postgres:
                 t.verb_stems,
                 t.adjective_stems,
                 t.root_domain,
-                t.sentiments,
-                t.sentiments_deframed
+                t.sentiments->>'v' AS sentiments_v,
+                t.sentiments->>'a' AS sentiments_a,
+                t.sentiments->>'d' AS sentiments_d,
+                t.sentiments->>'j' AS sentiments_j,
+                t.sentiments->>'a_n' AS sentiments_a_n,
+                t.sentiments->>'s' AS sentiments_s,
+                t.sentiments->>'f' AS sentiments_f,
+                t.sentiments->>'d_g' AS sentiments_d_g,
+                t.sentiments_deframed->>'v' AS sentiments_deframed_v,
+                t.sentiments_deframed->>'a' AS sentiments_deframed_a,
+                t.sentiments_deframed->>'d' AS sentiments_deframed_d,
+                t.sentiments_deframed->>'j' AS sentiments_deframed_j,
+                t.sentiments_deframed->>'a_n' AS sentiments_deframed_a_n,
+                t.sentiments_deframed->>'s' AS sentiments_deframed_s,
+                t.sentiments_deframed->>'f' AS sentiments_deframed_f,
+                t.sentiments_deframed->>'d_g' AS sentiments_deframed_d_g
             FROM trends t
             WHERE t.sentiments = '{}'::jsonb OR t.sentiments_deframed = '{}'::jsonb
             ORDER BY t.pub_date ASC
@@ -368,6 +410,8 @@ class Postgres:
                     set()
                 )  # item_ids where we need to load full item/feed data
                 for row in rows:
+                    sentiments = _sentiment_from_row(row, 9)
+                    sentiments_deframed = _sentiment_from_row(row, 17)
                     trend = Trend(
                         item_id=row[0],
                         feed_id=row[1],
@@ -378,13 +422,13 @@ class Postgres:
                         verb_stems=list(row[6] or []),
                         adjective_stems=list(row[7] or []),
                         root_domain=row[8],
-                        sentiments=_coerce_sentiment(row[9]),
-                        sentiments_deframed=_coerce_sentiment(row[10]),
+                        sentiments=sentiments,
+                        sentiments_deframed=sentiments_deframed,
                     )
                     trends.append(trend)
 
                     # Only load full item and feed when sentiments_deframed is empty
-                    if row[10] == {}:  # sentiments_deframed is empty
+                    if sentiments_deframed == {}:
                         item_ids_needed.add(row[0])
 
         # If we need item/feed data, fetch it in batches
@@ -476,31 +520,12 @@ def _empty_sentiment() -> Sentiment:
     return {}
 
 
-def _coerce_sentiment(value: Any) -> Sentiment:
-    if not isinstance(value, dict):
-        return {}
-
+def _sentiment_from_row(row: tuple[Any, ...], offset: int) -> Sentiment:
+    keys = ("v", "a", "d", "j", "a_n", "s", "f", "d_g")
     sentiment: Sentiment = {}
-    for key in ("v", "a", "d", "j", "a_n", "s", "f", "d_g"):
-        raw = value.get(key)
+    for index, key in enumerate(keys):
+        raw = row[offset + index]
         if raw is None:
             continue
-        numeric = float(raw)
-        if key == "v":
-            sentiment["v"] = numeric
-        elif key == "a":
-            sentiment["a"] = numeric
-        elif key == "d":
-            sentiment["d"] = numeric
-        elif key == "j":
-            sentiment["j"] = numeric
-        elif key == "a_n":
-            sentiment["a_n"] = numeric
-        elif key == "s":
-            sentiment["s"] = numeric
-        elif key == "f":
-            sentiment["f"] = numeric
-        elif key == "d_g":
-            sentiment["d_g"] = numeric
-
+        sentiment[key] = float(raw)
     return sentiment
