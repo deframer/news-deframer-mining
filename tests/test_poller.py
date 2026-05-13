@@ -3,7 +3,7 @@ from typing import cast
 from uuid import UUID, uuid4
 
 from news_deframer.config import Config, DEFAULT_LOCK_DURATION, POLLING_INTERVAL
-from news_deframer.postgres import Feed, Item, Postgres
+from news_deframer.postgres import Feed, Item, Postgres, ThinkResult
 from news_deframer.miner import Miner, MiningTask
 from news_deframer.poller import (
     poll_feed,
@@ -122,8 +122,13 @@ def test_poll_feed_fetches_items() -> None:
             id=uuid4(),
             feed_id=feed_id,
             language="es",
-            content="<item><deframer:title_original>foo</deframer:title_original></item>",
             pub_date=datetime(2024, 1, 1, 0, 0, 0),
+            think_result=ThinkResult(
+                title_original="foo",
+                description_original="bar",
+                title_corrected="foo corrected",
+                description_corrected="bar corrected",
+            ),
         )
     ]
     repo = DummyRepo(pending_items=pending_items)
@@ -144,8 +149,13 @@ def test_poll_feed_uses_feed_root_domain() -> None:
         Item(
             id=uuid4(),
             feed_id=feed_id,
-            content="<item/>",
             pub_date=datetime(2024, 1, 1, 0, 0, 0),
+            think_result=ThinkResult(
+                title_original="foo",
+                description_original="bar",
+                title_corrected="foo corrected",
+                description_corrected="bar corrected",
+            ),
         )
     ]
     repo = DummyRepo(pending_items=pending_items)
@@ -164,8 +174,13 @@ def test_poll_feed_returns_error(monkeypatch, caplog) -> None:
     item = Item(
         id=uuid4(),
         feed_id=feed.id,
-        content="<item/>",
         pub_date=datetime(2024, 1, 1, 0, 0, 0),
+        think_result=ThinkResult(
+            title_original="foo",
+            description_original="bar",
+            title_corrected="foo corrected",
+            description_corrected="bar corrected",
+        ),
     )
     repo = DummyRepo(pending_items=[item])
 
@@ -191,8 +206,13 @@ def test_poll_feed_splits_base_domain_stop_words() -> None:
     item = Item(
         id=uuid4(),
         feed_id=feed_id,
-        content="<item/>",
         pub_date=datetime(2024, 1, 1, 0, 0, 0),
+        think_result=ThinkResult(
+            title_original="foo",
+            description_original="bar",
+            title_corrected="foo corrected",
+            description_corrected="bar corrected",
+        ),
     )
     repo = DummyRepo(pending_items=[item])
     miner = DummyMiner()

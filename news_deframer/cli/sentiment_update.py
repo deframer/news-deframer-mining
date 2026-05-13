@@ -10,7 +10,6 @@ from news_deframer.logger import configure_logging
 from news_deframer.postgres import Postgres
 from news_deframer.sentiments import extract_sentiments_array
 from news_deframer.netutil import get_base_domain_name
-from news_deframer.item_content_parser import extract_title_and_description
 from news_deframer.nlp import extract_stems, sanitize_text
 
 logger = logging.getLogger(__name__)
@@ -43,6 +42,9 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         if trend.sentiments_deframed == {}:
             # We know this item_id exists in items_and_feeds because that's how fetch_trends_without_sentiments works
             item, feed = items_and_feeds[trend.item_id]
+            think_result = item.think_result
+            if think_result is None:
+                continue
 
             base_domain = get_base_domain_name(feed.url)
 
@@ -53,11 +55,11 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                 else []
             )
 
-            content = extract_title_and_description(item.content, item_id=item.id)
-
-            content.title_deframed = sanitize_text(content.title_deframed)
-            content.description_deframed = sanitize_text(content.description_deframed)
-            content_deframed = f"{content.title_deframed}{' ' if content.title_deframed else ''}{content.description_deframed}"
+            title_deframed = sanitize_text(think_result.title_corrected)
+            description_deframed = sanitize_text(think_result.description_corrected)
+            content_deframed = (
+                f"{title_deframed}{' ' if title_deframed else ''}{description_deframed}"
+            )
 
             noun_stems_deframed, verb_stems_deframed, adj_stems_deframed = (
                 extract_stems(

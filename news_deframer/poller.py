@@ -14,7 +14,6 @@ from news_deframer.config import (
     POLLING_INTERVAL,
     Config,
 )
-from news_deframer.item_content_parser import extract_title_and_description
 from news_deframer.netutil import (
     flush_domain_cache,
     get_base_domain_name,
@@ -159,7 +158,7 @@ def _build_task(feed: Feed, item: Item) -> MiningTask:
         [w for w in base_domain.split("-") if len(w) >= 3] if base_domain else []
     )
 
-    content_result = extract_title_and_description(item.content, item_id=item.id)
+    think_result = item.think_result
     return MiningTask(
         feed_id=feed.id,
         feed_url=feed.url,
@@ -167,10 +166,14 @@ def _build_task(feed: Feed, item: Item) -> MiningTask:
         item_id=item.id,
         language=language,
         categories=categories,
-        title_deframed=content_result.title_deframed,
-        description_deframed=content_result.description_deframed,
-        title_original=content_result.title_original,
-        description_original=content_result.description_original,
+        title_deframed=think_result.title_corrected if think_result else None,
+        description_deframed=think_result.description_corrected
+        if think_result
+        else None,
+        title_original=think_result.title_original if think_result else None,
+        description_original=think_result.description_original
+        if think_result
+        else None,
         pub_date=item.pub_date,
         stop_words=stop_words,
     )
