@@ -527,5 +527,21 @@ def _sentiment_from_row(row: tuple[Any, ...], offset: int) -> Sentiment:
         raw = row[offset + index]
         if raw is None:
             continue
-        sentiment[key] = float(raw)
+        value = float(raw)
+        if key == "v":
+            sentiment["v"] = value
+        elif key == "a":
+            sentiment["a"] = value
+        elif key == "d":
+            sentiment["d"] = value
+        elif key == "j":
+            sentiment["j"] = value
+        elif key == "a_n":
+            sentiment["a_n"] = value
+        elif key == "s":
+            sentiment["s"] = value
+        elif key == "f":
+            sentiment["f"] = value
+        elif key == "d_g":
+            sentiment["d_g"] = value
     return sentiment
