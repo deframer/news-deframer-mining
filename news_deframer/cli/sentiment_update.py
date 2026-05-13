@@ -57,7 +57,9 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
 
             title_deframed = sanitize_text(think_result.title_corrected)
             description_deframed = sanitize_text(think_result.description_corrected)
-            content_deframed = f"{title_deframed}{' ' if title_deframed else ''}{description_deframed}"
+            content_deframed = (
+                f"{title_deframed}{' ' if title_deframed else ''}{description_deframed}"
+            )
 
             noun_stems_deframed, verb_stems_deframed, adj_stems_deframed = (
                 extract_stems(
