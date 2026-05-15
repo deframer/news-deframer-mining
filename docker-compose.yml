@@ -9,8 +9,8 @@ services:
       - LOG_DATABASE=${LOG_DATABASE:-false}
       - LOG_LEVEL=${LOG_LEVEL:-debug}
       # we download the models on demand
-      - SPACY_MODELS=${SPACY_MODELS:-en de dk}
-      - MEMOLON_MODELS=${MEMOLON_MODELS:-en de dk}
+      - SPACY_MODELS=${SPACY_MODELS:-en de da}
+      - MEMOLON_MODELS=${MEMOLON_MODELS:-en de da}
     networks:
       - infra-net
 
