@@ -1,4 +1,4 @@
-.PHONY: all build clean test help lint format type-check fix start stop down logs zap run sync duckdb-ui FORCE download-models sentiment-update analize-text
+.PHONY: all build clean test help lint format type-check fix start stop down logs zap run sync duckdb-ui FORCE download-models sentiment-update analyze-text
 
 APP_NAME := miner
 TEXT_LANGUAGE ?= en
@@ -44,10 +44,10 @@ download-models:
 sentiment-update:
 	uv run python -m news_deframer.cli.sentiment_update
 
-# Example: echo "This is a very happy and joyful day!" | make analize-text | sed '1d' | jq -c
-# Example German: echo "Das ist ein sehr schöner Tag!" | TEXT_LANGUAGE=de make analize-text | sed '1d' | jq -c
-analize-text:
-	uv run python -m news_deframer.cli.analize_text -l "$(TEXT_LANGUAGE)"
+# Example: echo "This is a very happy and joyful day!" | make analyze-text | sed '1d' | jq -c
+# Example German: echo "Das ist ein sehr schöner Tag!" | TEXT_LANGUAGE=de make analyze-text | sed '1d' | jq -c
+analyze-text:
+	uv run python -m news_deframer.cli.analyze_text -l "$(TEXT_LANGUAGE)"
 
 docker-build:
 	docker build -t $(DOCKER_REPO)/$(APP_NAME):latest -f build/package/mining/Dockerfile .

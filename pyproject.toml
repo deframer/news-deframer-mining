@@ -18,7 +18,7 @@ dependencies = [
 
 [project.scripts]
 miner-cli = "news_deframer.cli.miner:main"
-download-models = "news_deframer.models:install_models"
+download-models = "news_deframer.cli.download_models:main"
 
 [dependency-groups]
 dev = [

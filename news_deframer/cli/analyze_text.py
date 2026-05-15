@@ -11,7 +11,7 @@ from news_deframer.cli.analyzer import analyze_file
 
 
 def main(argv: Optional[Sequence[str]] = None) -> int:
-    parser = argparse.ArgumentParser(prog="analize-text", description="Analyze text")
+    parser = argparse.ArgumentParser(prog="analyze-text", description="Analyze text")
     parser.add_argument(
         "-i",
         "--input",
