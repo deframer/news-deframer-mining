@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 from typing import Any, TextIO
 
+from news_deframer.config import Config
 from news_deframer.nlp import extract_stems, sanitize_text
 from news_deframer.sentiments import extract_sentiments_array
 
@@ -20,7 +21,9 @@ SENTIMENT_LONG_NAMES = {
 }
 
 
-def analyze_text(content: str, language: str) -> dict[str, Any]:
+def analyze_text(
+    content: str, language: str, config: Config | None = None
+) -> dict[str, Any]:
     """Analyze the provided text and return sentiment scores with long names."""
     # turn off ner (spicy is buggy)
     with_ner = False
@@ -32,11 +35,13 @@ def analyze_text(content: str, language: str) -> dict[str, Any]:
         language,
         stop_words=None,
         with_ner=with_ner,
+        config=config,
     )
 
     sentiments = extract_sentiments_array(
         (noun_stems, verb_stems, adj_stems),
         language,
+        config=config,
     )
 
     if not sentiments:
@@ -46,7 +51,9 @@ def analyze_text(content: str, language: str) -> dict[str, Any]:
     return {SENTIMENT_LONG_NAMES.get(k, k): v for k, v in sentiments.items()}
 
 
-def analyze_file(input_file: TextIO, language: str) -> dict[str, Any]:
+def analyze_file(
+    input_file: TextIO, language: str, config: Config | None = None
+) -> dict[str, Any]:
     """Read content from a file-like object and analyze it."""
     content = input_file.read()
-    return analyze_text(content, language)
+    return analyze_text(content, language, config=config)

@@ -51,7 +51,11 @@ class DummyMiner(Miner):
 
 
 def make_config() -> Config:
-    return Config(dsn="", log_level="INFO", log_database=False)
+    config = Config.load()
+    config.dsn = ""
+    config.log_level = "INFO"
+    config.log_database = False
+    return config
 
 
 def test_poll_next_feed_returns_false_when_no_feed() -> None:

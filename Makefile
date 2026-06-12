@@ -1,4 +1,4 @@
-.PHONY: all build clean test help lint format type-check fix start stop down logs zap run sync duckdb-ui FORCE download-models sentiment-update analyze-text
+.PHONY: all build clean test help lint format type-check fix start stop down logs zap run sync duckdb-ui FORCE sentiment-update analyze-text download-models-test
 
 APP_NAME := miner
 TEXT_LANGUAGE ?= en
@@ -33,13 +33,6 @@ zap: down start
 
 miner:
 	uv run python -m news_deframer.cli.miner
-
-# additional languages of the spaCy models - https://github.com/explosion/spacy-models
-# export SPACY_MODELS="sl uk es"
-# additional languages for the Memolon models - https://github.com/deframer/memolon-parquet
-# export MEMOLON_MODELS="en de"
-download-models:
-	uv run python -m news_deframer.cli.download_models
 
 sentiment-update:
 	uv run python -m news_deframer.cli.sentiment_update

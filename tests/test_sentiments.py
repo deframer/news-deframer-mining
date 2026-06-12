@@ -5,16 +5,17 @@ from typing import Generator
 import pytest
 
 from news_deframer import sentiments
+from news_deframer import memolon_models
 
 
 @pytest.fixture(autouse=True)
 def clear_sentiment_caches() -> Generator[None, None, None]:
-    sentiments._MEMOLON_CACHE.clear()
+    memolon_models._MEMOLON_CACHE.clear()
     yield
-    sentiments._MEMOLON_CACHE.clear()
+    memolon_models._MEMOLON_CACHE.clear()
 
 
-def test_extract_sentiments_returns_matching_row(monkeypatch) -> None:
+def test_extract_sentiments_returns_matching_row(monkeypatch, tmp_path) -> None:
     class DummyScalar:
         def __init__(self, value: object):
             self._value = value
@@ -46,15 +47,22 @@ def test_extract_sentiments_returns_matching_row(monkeypatch) -> None:
 
     read_calls = 0
 
+    model_path = tmp_path / "memolon.parquet"
+    model_path.write_bytes(b"dummy")
+
     def fake_read_table(_path):
         nonlocal read_calls
         read_calls += 1
         return DummyTable()
 
     monkeypatch.setattr(
-        sentiments, "pq", type("DummyPQ", (), {"read_table": fake_read_table})
+        memolon_models, "pq", type("DummyPQ", (), {"read_table": fake_read_table})
     )
-    monkeypatch.setattr(sentiments.Path, "exists", lambda _self: True)
+    monkeypatch.setattr(
+        memolon_models,
+        "ensure_memolon_model",
+        lambda _lang, **_kwargs: model_path,
+    )
 
     row = sentiments.extract_sentiments("cHeEsE", "en")
 
@@ -62,7 +70,7 @@ def test_extract_sentiments_returns_matching_row(monkeypatch) -> None:
     assert read_calls == 1
 
 
-def test_extract_sentiments_uses_cached_model(monkeypatch) -> None:
+def test_extract_sentiments_uses_cached_model(monkeypatch, tmp_path) -> None:
     class DummyScalar:
         def __init__(self, value: object):
             self._value = value
@@ -93,15 +101,22 @@ def test_extract_sentiments_uses_cached_model(monkeypatch) -> None:
 
     read_calls = 0
 
+    model_path = tmp_path / "memolon.parquet"
+    model_path.write_bytes(b"dummy")
+
     def fake_read_table(_path):
         nonlocal read_calls
         read_calls += 1
         return DummyTable()
 
     monkeypatch.setattr(
-        sentiments, "pq", type("DummyPQ", (), {"read_table": fake_read_table})
+        memolon_models, "pq", type("DummyPQ", (), {"read_table": fake_read_table})
     )
-    monkeypatch.setattr(sentiments.Path, "exists", lambda _self: True)
+    monkeypatch.setattr(
+        memolon_models,
+        "ensure_memolon_model",
+        lambda _lang, **_kwargs: model_path,
+    )
 
     first = sentiments.extract_sentiments("Cheese", "en")
     second = sentiments.extract_sentiments("cheese", "en")
@@ -110,7 +125,7 @@ def test_extract_sentiments_uses_cached_model(monkeypatch) -> None:
     assert read_calls == 1
 
 
-def test_extract_sentiments_returns_none_for_missing_word(monkeypatch) -> None:
+def test_extract_sentiments_returns_none_for_missing_word(monkeypatch, tmp_path) -> None:
     class DummyColumn:
         def __init__(self, values: list[object]):
             self._values = values
@@ -124,12 +139,19 @@ def test_extract_sentiments_returns_none_for_missing_word(monkeypatch) -> None:
         def column(self, _name: str) -> DummyColumn:
             return DummyColumn(["Cheese"])
 
+    model_path = tmp_path / "memolon.parquet"
+    model_path.write_bytes(b"dummy")
+
     monkeypatch.setattr(
-        sentiments,
+        memolon_models,
         "pq",
         type("DummyPQ", (), {"read_table": lambda _path: DummyTable()}),
     )
-    monkeypatch.setattr(sentiments.Path, "exists", lambda _self: True)
+    monkeypatch.setattr(
+        memolon_models,
+        "ensure_memolon_model",
+        lambda _lang, **_kwargs: model_path,
+    )
 
     assert sentiments.extract_sentiments("Butter", "en") is None
 
@@ -146,7 +168,7 @@ def test_extract_sentiments_array_uses_mean_for_vad_and_max_for_be5(
     monkeypatch.setattr(
         sentiments,
         "extract_sentiments",
-        lambda word, _language: lookup.get(word.lower()),
+        lambda word, _language, **_kwargs: lookup.get(word.lower()),
     )
 
     result = sentiments.extract_sentiments_array(
@@ -161,7 +183,7 @@ def test_extract_sentiments_array_returns_none_when_no_words_match(monkeypatch) 
     monkeypatch.setattr(
         sentiments,
         "extract_sentiments",
-        lambda _word, _language: None,
+        lambda _word, _language, **_kwargs: None,
     )
 
     result = sentiments.extract_sentiments_array(([], ["Unknown"], []), "en")

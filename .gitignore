@@ -30,5 +30,4 @@ core*
 .core*
 
 # Models
-memolon/
-spacy/
+models/

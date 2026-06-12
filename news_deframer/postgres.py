@@ -75,7 +75,9 @@ class Postgres:
 
     def _get_connection(self):
         if self._conn is None or (hasattr(self._conn, "closed") and self._conn.closed):
-            self._conn = psycopg2.connect(self.config.dsn)
+            self._conn = psycopg2.connect(
+                self.config.dsn, application_name=self.config.application_name
+            )
         return self._conn
 
     def begin_mine_update(self, lock_duration: int) -> Optional[Feed]:

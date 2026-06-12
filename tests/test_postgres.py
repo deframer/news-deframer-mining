@@ -10,11 +10,11 @@ import news_deframer.postgres as postgres_module
 
 
 def make_config() -> Config:
-    return Config(
-        dsn="postgres://local",
-        log_level="INFO",
-        log_database=False,
-    )
+    config = Config.load()
+    config.dsn = "postgres://local"
+    config.log_level = "INFO"
+    config.log_database = False
+    return config
 
 
 @dataclass
@@ -50,6 +50,7 @@ class CursorStub:
 @dataclass
 class ConnectionStub:
     cursor_stub: CursorStub
+    connect_kwargs: dict[str, object] = field(default_factory=dict)
 
     def __enter__(self):
         return self
@@ -65,6 +66,7 @@ def patch_connect(monkeypatch, cursor_stub):
     conn = ConnectionStub(cursor_stub)
 
     def fake_connect(*args, **kwargs):
+        conn.connect_kwargs = kwargs
         return conn
 
     monkeypatch.setattr(
@@ -82,6 +84,16 @@ def test_begin_mine_update_returns_none(monkeypatch):
 
     assert feed is None
     assert any("SELECT" in call[0].upper() for call in cursor.execute_calls)
+
+
+def test_connect_uses_application_name(monkeypatch):
+    cursor = CursorStub()
+    conn = patch_connect(monkeypatch, cursor)
+    repo = postgres_module.Postgres(make_config())
+
+    _ = repo._get_connection()
+
+    assert conn.connect_kwargs["application_name"] == make_config().application_name
 
 
 def test_begin_mine_update_returns_feed(monkeypatch):

@@ -2,26 +2,14 @@
 
 from __future__ import annotations
 
-import logging
-import time
 from statistics import mean
-from pathlib import Path
 from typing import Any, Sequence, TypedDict, cast
 
-from news_deframer.logger import _format_bytes, _get_rss_bytes
-from news_deframer.memolon_models import MEMOLON_LANGUAGE_MODELS
-
-try:  # pragma: no cover - optional dependency behavior
-    import pyarrow.parquet as pq  # type: ignore[import-untyped]
-except Exception:  # pragma: no cover - optional dependency behavior
-    pq = None  # type: ignore[assignment]
-
-
-_MEMOLON_CACHE: dict[str, tuple[Any, list[str]]] = {}
-
-
-logger = logging.getLogger(__name__)
-
+from news_deframer.config import Config
+from news_deframer.memolon_models import (
+    MEMOLON_LANGUAGE_MODELS,
+    load_memolon_model,
+)
 # Aggregation motivation:
 # - Median is robust to outliers, but in NLP those "outliers" are often the
 #   emotionally meaningful words we want to preserve.
@@ -112,80 +100,24 @@ def _get_language_code(language: str) -> str:
     return (language or "").split("-")[0].lower()
 
 
-def _get_memolon_model(language: str) -> tuple[Any, list[str]]:
+def _get_memolon_model(
+    language: str, config: Config | None = None
+) -> tuple[Any, list[str]]:
     """Load and cache the Memolon table and lowercase word index for a language."""
-    if pq is None:
-        raise RuntimeError("pyarrow is required but not installed")
-
     lang_code = _get_language_code(language)
     if not lang_code:
         raise RuntimeError("Language code is required for sentiment handling")
-
-    cached = _MEMOLON_CACHE.get(lang_code)
-    if cached is not None:
-        return cached
 
     model_filename = MEMOLON_LANGUAGE_MODELS.get(lang_code)
     if not model_filename:
         raise RuntimeError(f"No Memolon model available for language '{language}'")
 
-    model_path = Path(__file__).resolve().parent.parent / "memolon" / model_filename
-    if not model_path.exists():
-        raise RuntimeError(f"Memolon model file not found: {model_path}")
-
-    started_at = time.perf_counter()
-    rss_before = _get_rss_bytes()
-    try:
-        table = pq.read_table(model_path)
-    except Exception as exc:  # pragma: no cover - propagate failure gracefully
-        raise RuntimeError(f"Failed to load Memolon model '{model_filename}'") from exc
-
-    read_elapsed = time.perf_counter() - started_at
-
-    if "word" not in table.column_names:
-        raise RuntimeError(f"Memolon model '{model_filename}' has no 'word' column")
-
-    index_started_at = time.perf_counter()
-    lowercase_word_list = [
-        str(word).lower() for word in table.column("word").to_pylist()
-    ]
-    index_elapsed = time.perf_counter() - index_started_at
-    total_elapsed = time.perf_counter() - started_at
-    rss_after = _get_rss_bytes()
-    rss_delta = (
-        rss_after - rss_before
-        if rss_before is not None and rss_after is not None
-        else None
-    )
-    disk_size_bytes = model_path.stat().st_size
-    table_nbytes = getattr(table, "nbytes", None)
-
-    logger.info(
-        "Loaded Memolon model '%s' in %.3fs (disk=%s, table=%s, rss_delta=%s, read=%.3fs, index=%.3fs)",
-        model_filename,
-        total_elapsed,
-        _format_bytes(disk_size_bytes),
-        _format_bytes(table_nbytes if isinstance(table_nbytes, int) else None),
-        _format_bytes(rss_delta),
-        read_elapsed,
-        index_elapsed,
-        extra={
-            "language": language,
-            "path": str(model_path),
-            "disk_size": _format_bytes(disk_size_bytes),
-            "table_size": _format_bytes(
-                table_nbytes if isinstance(table_nbytes, int) else None
-            ),
-            "rss_delta": _format_bytes(rss_delta),
-        },
-    )
-
-    cached_model = (table, lowercase_word_list)
-    _MEMOLON_CACHE[lang_code] = cached_model
-    return cached_model
+    return load_memolon_model(language, config=config)
 
 
-def extract_sentiments(word_to_find: str, language: str) -> Sentiment | None:
+def extract_sentiments(
+    word_to_find: str, language: str, config: Config | None = None
+) -> Sentiment | None:
     """Return compact Memolon sentiment scores for a single word.
 
     1. The Dimensional Approach (VAD) | Scale: 1.0 to 9.0 (5.0 is Neutral)
@@ -213,7 +145,7 @@ def extract_sentiments(word_to_find: str, language: str) -> Sentiment | None:
     if not normalized:
         return None
 
-    table, lowercase_word_list = _get_memolon_model(language)
+    table, lowercase_word_list = _get_memolon_model(language, config=config)
     lowercase_word_to_find = normalized.lower()
 
     try:
@@ -232,7 +164,9 @@ def extract_sentiments(word_to_find: str, language: str) -> Sentiment | None:
 
 
 def extract_sentiments_array(
-    stems: tuple[Sequence[str], Sequence[str], Sequence[str]], language: str
+    stems: tuple[Sequence[str], Sequence[str], Sequence[str]],
+    language: str,
+    config: Config | None = None,
 ) -> Sentiment | None:
     """Return aggregated sentiment scores across matched words.
 
@@ -248,7 +182,7 @@ def extract_sentiments_array(
 
     for words in stems:
         for word in words:
-            sentiment = extract_sentiments(word, language)
+            sentiment = extract_sentiments(word, language, config=config)
             if sentiment is None:
                 continue
             for key, value in sentiment.items():

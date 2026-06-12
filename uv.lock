@@ -241,30 +241,6 @@ wheels = [
 ]
 
 [[package]]
-name = "de-core-news-lg"
-version = "3.8.0"
-source = { url = "https://github.com/explosion/spacy-models/releases/download/de_core_news_lg-3.8.0/de_core_news_lg-3.8.0-py3-none-any.whl" }
-wheels = [
-    { url = "https://github.com/explosion/spacy-models/releases/download/de_core_news_lg-3.8.0/de_core_news_lg-3.8.0-py3-none-any.whl", hash = "sha256:36fda650e476b54d5e87803635e36dadd1e8e034c4b5962088586d684f4c9fed" },
-]
-
-[[package]]
-name = "en-core-web-lg"
-version = "3.8.0"
-source = { url = "https://github.com/explosion/spacy-models/releases/download/en_core_web_lg-3.8.0/en_core_web_lg-3.8.0-py3-none-any.whl" }
-wheels = [
-    { url = "https://github.com/explosion/spacy-models/releases/download/en_core_web_lg-3.8.0/en_core_web_lg-3.8.0-py3-none-any.whl", hash = "sha256:293e9547a655b25499198ab15a525b05b9407a75f10255e405e8c3854329ab63" },
-]
-
-[[package]]
-name = "fr-core-news-lg"
-version = "3.8.0"
-source = { url = "https://github.com/explosion/spacy-models/releases/download/fr_core_news_lg-3.8.0/fr_core_news_lg-3.8.0-py3-none-any.whl" }
-wheels = [
-    { url = "https://github.com/explosion/spacy-models/releases/download/fr_core_news_lg-3.8.0/fr_core_news_lg-3.8.0-py3-none-any.whl", hash = "sha256:da5bf7fc860af64293d88638b4416b3de3a29005b785bfff67d09b06c77345de" },
-]
-
-[[package]]
 name = "h11"
 version = "0.16.0"
 source = { registry = "https://pypi.org/simple" }
@@ -563,7 +539,6 @@ version = "0.1.0"
 source = { editable = "." }
 dependencies = [
     { name = "beautifulsoup4" },
-    { name = "en-core-web-lg" },
     { name = "numpy" },
     { name = "psycopg2-binary" },
     { name = "publicsuffix2" },
@@ -575,8 +550,6 @@ dependencies = [
 
 [package.dev-dependencies]
 dev = [
-    { name = "de-core-news-lg" },
-    { name = "fr-core-news-lg" },
     { name = "mypy" },
     { name = "pytest" },
     { name = "ruff" },
@@ -586,7 +559,6 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "beautifulsoup4" },
-    { name = "en-core-web-lg", url = "https://github.com/explosion/spacy-models/releases/download/en_core_web_lg-3.8.0/en_core_web_lg-3.8.0-py3-none-any.whl" },
     { name = "numpy", specifier = ">=2.4.4,<3.0" },
     { name = "psycopg2-binary" },
     { name = "publicsuffix2" },
@@ -598,8 +570,6 @@ requires-dist = [
 
 [package.metadata.requires-dev]
 dev = [
-    { name = "de-core-news-lg", url = "https://github.com/explosion/spacy-models/releases/download/de_core_news_lg-3.8.0/de_core_news_lg-3.8.0-py3-none-any.whl" },
-    { name = "fr-core-news-lg", url = "https://github.com/explosion/spacy-models/releases/download/fr_core_news_lg-3.8.0/fr_core_news_lg-3.8.0-py3-none-any.whl" },
     { name = "mypy" },
     { name = "pytest" },
     { name = "ruff" },

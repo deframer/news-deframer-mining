@@ -20,7 +20,11 @@ class RepositoryStub:
 
 
 def make_config() -> Config:
-    return Config(dsn="", log_level="INFO", log_database=False)
+    config = Config.load()
+    config.dsn = ""
+    config.log_level = "INFO"
+    config.log_database = False
+    return config
 
 
 def test_mine_item_upserts_trend(monkeypatch):
@@ -32,7 +36,9 @@ def test_mine_item_upserts_trend(monkeypatch):
     repo = RepositoryStub()
     miner = Miner(make_config(), repository=cast(Postgres, repo))
     monkeypatch.setattr(
-        miner_module, "extract_sentiments_array", lambda stems, language: {"v": 6.19}
+        miner_module,
+        "extract_sentiments_array",
+        lambda stems, language, **_kwargs: {"v": 6.19},
     )
     task = MiningTask(
         feed_id=uuid4(),
@@ -102,7 +108,9 @@ def test_miner_stem_extraction_real_models(
     repo = RepositoryStub()
     miner = Miner(make_config(), repository=cast(Postgres, repo))
     monkeypatch.setattr(
-        miner_module, "extract_sentiments_array", lambda stems, sentiment_language: {}
+        miner_module,
+        "extract_sentiments_array",
+        lambda stems, sentiment_language, **_kwargs: {},
     )
     task = MiningTask(
         feed_id=uuid4(),
@@ -135,7 +143,9 @@ def test_mine_item_filters_stop_words(monkeypatch):
     repo = RepositoryStub()
     miner = Miner(make_config(), repository=cast(Postgres, repo))
     monkeypatch.setattr(
-        miner_module, "extract_sentiments_array", lambda stems, sentiment_language: {}
+        miner_module,
+        "extract_sentiments_array",
+        lambda stems, sentiment_language, **_kwargs: {},
     )
     task = MiningTask(
         feed_id=uuid4(),

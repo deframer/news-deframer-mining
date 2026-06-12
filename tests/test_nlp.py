@@ -5,14 +5,15 @@ from typing import Generator
 import pytest
 
 from news_deframer import nlp
+from news_deframer import spacy_models
 
 
 @pytest.fixture(autouse=True)
 def clear_nlp_caches() -> Generator[None, None, None]:
-    nlp._NLP_CACHE.clear()
+    spacy_models._NLP_CACHE.clear()
     nlp._STOPWORD_CACHE.clear()
     yield
-    nlp._NLP_CACHE.clear()
+    spacy_models._NLP_CACHE.clear()
     nlp._STOPWORD_CACHE.clear()
 
 
@@ -22,8 +23,8 @@ def test_sanitize_text_strips_html() -> None:
 
 
 def test_extract_stems_errors_without_spacy(monkeypatch) -> None:
-    monkeypatch.setattr(nlp, "spacy", None)
-    monkeypatch.setattr(nlp, "_NLP_CACHE", {})
+    monkeypatch.setattr(spacy_models, "spacy", None)
+    monkeypatch.setattr(spacy_models, "_NLP_CACHE", {})
 
     with pytest.raises(RuntimeError):
         nlp.extract_stems("text", "en")
