@@ -101,7 +101,6 @@ def test_begin_mine_update_returns_feed(monkeypatch):
     assert feed.categories == ["cat1", "cat2"]
     assert feed.language == "en"
     assert feed.url == "https://feed.example"
-    assert feed.root_domain is None
     assert len(cursor.execute_calls) >= 2  # select + update
 
 
@@ -225,7 +224,6 @@ def test_fetch_trends_without_sentiments(monkeypatch):
     assert trend.adjective_stems == ["gut"]
     assert trend.feed_id is None
     assert trend.pub_date is None
-    assert trend.root_domain is None
     assert trend.sentiments == {}
     assert trend.sentiments_deframed == {}
     # Check that we got the item and feed for this trend
@@ -242,7 +240,6 @@ def test_fetch_trends_without_sentiments(monkeypatch):
     assert feed.url == "https://feed.example"
     assert feed.categories == []
     assert feed.language is None
-    assert feed.root_domain is None
     # Check that we made 3 calls: trends, items, feeds
     assert len(cursor.execute_calls) >= 3
     trends_sql = cursor.execute_calls[0][0]

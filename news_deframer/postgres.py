@@ -22,7 +22,6 @@ class Feed:
     url: str
     categories: list[str] = field(default_factory=list)
     language: Optional[str] = None
-    root_domain: Optional[str] = None
 
 
 @dataclass

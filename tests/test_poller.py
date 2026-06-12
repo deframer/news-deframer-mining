@@ -57,7 +57,7 @@ def make_config() -> Config:
 def test_poll_next_feed_returns_false_when_no_feed() -> None:
     repo = DummyRepo(feed=None)
     miner = DummyMiner()
-    assert poll_next_feed(make_config(), miner, repo) is False
+    assert poll_next_feed(make_config(), miner, repo) == 0
     assert repo.lock_duration == DEFAULT_LOCK_DURATION
     assert repo.end_calls == []
 
@@ -67,7 +67,7 @@ def test_poll_next_feed_success_calls_end_update(monkeypatch) -> None:
     repo = DummyRepo(feed=Feed(id=feed_id, url="https://feed"))
     miner = DummyMiner()
 
-    def fake_poll_feed(feed: Feed, miner_obj: DummyMiner, repo_obj: DummyRepo) -> None:
+    def fake_poll_feed(feed: Feed, miner_obj: DummyMiner, repo_obj: DummyRepo) -> int:
         miner_obj.tasks.append(
             MiningTask(
                 feed_id=feed.id,
@@ -83,10 +83,11 @@ def test_poll_next_feed_success_calls_end_update(monkeypatch) -> None:
                 root_domain="example.com",
             )
         )
+        return 1
 
     monkeypatch.setattr("news_deframer.poller.poll_feed", fake_poll_feed)
 
-    assert poll_next_feed(make_config(), miner, repo) is True
+    assert poll_next_feed(make_config(), miner, repo) == 1
     assert repo.end_calls == [(str(feed_id), POLLING_INTERVAL)]
 
 
@@ -95,12 +96,12 @@ def test_poll_next_feed_passes_errors(monkeypatch) -> None:
     repo = DummyRepo(feed=Feed(id=feed_id, url="https://feed"))
     miner = DummyMiner()
 
-    def boom(feed: Feed, miner_obj: DummyMiner, repo_obj: DummyRepo) -> None:  # noqa: ARG001
+    def boom(feed: Feed, miner_obj: DummyMiner, repo_obj: DummyRepo) -> int:  # noqa: ARG001
         raise ValueError("fail")
 
     monkeypatch.setattr("news_deframer.poller.poll_feed", boom)
 
-    assert poll_next_feed(make_config(), miner, repo) is True
+    assert poll_next_feed(make_config(), miner, repo) == 0
     assert len(repo.end_calls) == 1
     feed_id_value, retry = repo.end_calls[0]
     assert feed_id_value == str(feed_id)
@@ -110,7 +111,7 @@ def test_poll_next_feed_passes_errors(monkeypatch) -> None:
 def test_poll_next_feed_handles_begin_failure(caplog) -> None:
     repo = DummyRepo(feed=None, fail_begin=True)
     miner = DummyMiner()
-    assert poll_next_feed(make_config(), miner, repo) is False
+    assert poll_next_feed(make_config(), miner, repo) == 0
     assert repo.end_calls == []
     assert any("Failed to query next feed" in msg for msg in caplog.text.splitlines())
 
@@ -143,7 +144,7 @@ def test_poll_feed_fetches_items() -> None:
     assert miner.tasks[0].root_domain == "feed"
 
 
-def test_poll_feed_uses_feed_root_domain() -> None:
+def test_poll_feed_uses_derived_root_domain() -> None:
     feed_id = uuid4()
     pending_items = [
         Item(
@@ -160,13 +161,13 @@ def test_poll_feed_uses_feed_root_domain() -> None:
     ]
     repo = DummyRepo(pending_items=pending_items)
     miner = DummyMiner()
-    feed = Feed(id=feed_id, url="https://feed", root_domain="feed.example")
+    feed = Feed(id=feed_id, url="https://feed")
 
     poll_feed(feed, miner, repo)
 
     assert len(miner.tasks) == 1
     assert miner.tasks[0].categories == []
-    assert miner.tasks[0].root_domain == "feed.example"
+    assert miner.tasks[0].root_domain == "feed"
 
 
 def test_poll_feed_returns_error(monkeypatch, caplog) -> None:
@@ -194,9 +195,9 @@ def test_poll_feed_returns_error(monkeypatch, caplog) -> None:
     miner = ExplodingMiner()
 
     with caplog.at_level("ERROR"):
-        error = poll_feed(feed, miner, repo)
+        mined = poll_feed(feed, miner, repo)
 
-    assert isinstance(error, RuntimeError)
+    assert mined == 0
     assert any("Failed to process item" in record.message for record in caplog.records)
 
 
