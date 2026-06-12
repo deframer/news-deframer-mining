@@ -8,7 +8,8 @@ WORKDIR /app
 
 # Set environment variables
 ENV PYTHONUNBUFFERED=1 \
-    PYTHONDONTWRITEBYTECODE=1
+    PYTHONDONTWRITEBYTECODE=1 \
+    MODEL_ROOT=/app/models
 
 # Copy project files
 COPY pyproject.toml README.md uv.lock* ./

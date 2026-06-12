@@ -5,7 +5,7 @@ from news_deframer import memolon_models
 
 
 def test_get_memolon_model_path_uses_local_filesystem(monkeypatch, tmp_path) -> None:
-    monkeypatch.setattr(memolon_models, "get_workspace_root", lambda: tmp_path)
+    monkeypatch.setattr(memolon_models, "get_model_root", lambda: tmp_path / "models")
 
     model_path = memolon_models.get_memolon_model_path("en")
 
@@ -21,7 +21,7 @@ def test_get_memolon_model_path_uses_local_filesystem(monkeypatch, tmp_path) -> 
 
 
 def test_ensure_memolon_model_downloads_missing_file(monkeypatch, tmp_path) -> None:
-    monkeypatch.setattr(memolon_models, "get_workspace_root", lambda: tmp_path)
+    monkeypatch.setattr(memolon_models, "get_model_root", lambda: tmp_path / "models")
 
     model_path = memolon_models.get_memolon_model_path("de")
     calls = []

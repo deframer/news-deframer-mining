@@ -5,7 +5,7 @@ from news_deframer import spacy_models
 
 
 def test_ensure_spacy_model_uses_existing_local_path(monkeypatch, tmp_path) -> None:
-    monkeypatch.setattr(spacy_models, "get_workspace_root", lambda: tmp_path)
+    monkeypatch.setattr(spacy_models, "get_model_root", lambda: tmp_path / "models")
 
     model_name = spacy_models.SPACY_LANGUAGE_MODELS["en"]
     model_path = (
@@ -21,7 +21,7 @@ def test_ensure_spacy_model_uses_existing_local_path(monkeypatch, tmp_path) -> N
 
 
 def test_ensure_spacy_model_downloads_missing_model(monkeypatch, tmp_path) -> None:
-    monkeypatch.setattr(spacy_models, "get_workspace_root", lambda: tmp_path)
+    monkeypatch.setattr(spacy_models, "get_model_root", lambda: tmp_path / "models")
 
     model_name = spacy_models.SPACY_LANGUAGE_MODELS["de"]
     model_root = (

@@ -10,7 +10,7 @@ from news_deframer.logger import _format_bytes, _get_rss_bytes
 from news_deframer.model_store import (
     acquire_lock,
     download_wheel_to_directory,
-    get_project_root as get_workspace_root,
+    get_model_root,
 )
 
 try:  # pragma: no cover - optional dependency
@@ -55,14 +55,8 @@ def _get_directory_size_bytes(path: Path) -> int | None:
 
 def _get_language_code(language: str) -> str:
     return (language or "").split("-")[0].lower()
-
-
-def get_project_root() -> Path:
-    return get_workspace_root()
-
-
 def _get_spacy_root() -> Path:
-    return get_project_root() / "models" / "spacy"
+    return get_model_root() / "spacy"
 
 
 def _get_spacy_model_name(language: str) -> str:
