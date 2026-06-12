@@ -55,6 +55,8 @@ def _get_directory_size_bytes(path: Path) -> int | None:
 
 def _get_language_code(language: str) -> str:
     return (language or "").split("-")[0].lower()
+
+
 def _get_spacy_root() -> Path:
     return get_model_root() / "spacy"
 

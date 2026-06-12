@@ -38,6 +38,8 @@ _MEMOLON_CACHE: dict[tuple[str, str], tuple[Any, list[str]]] = {}
 
 def _get_language_code(language: str) -> str:
     return (language or "").split("-")[0].lower()
+
+
 def _get_memolon_root() -> Path:
     return get_model_root() / "memolon"
 
