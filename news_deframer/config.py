@@ -36,4 +36,6 @@ class Config:
             dsn=os.getenv("DSN", ""),
             log_level=os.getenv("LOG_LEVEL", "INFO"),
             log_database=os.getenv("LOG_DATABASE", "false").lower() == "true",
+            spacy_version=os.getenv("SPACY_VERSION", "3.8.0"),
+            memolon_version=os.getenv("MEMOLON_VERSION", "0.0.1"),
         )
