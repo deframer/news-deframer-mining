@@ -92,6 +92,8 @@ def _format_bytes(size_bytes: int | None) -> str:
             return f"{size:.1f}{unit}"
         size /= 1000.0
 
+    return "unknown"
+
 
 def _get_rss_bytes() -> int | None:
     try:

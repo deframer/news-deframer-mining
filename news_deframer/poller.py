@@ -162,6 +162,9 @@ def _build_task(feed: Feed, item: Item) -> MiningTask:
     )
 
     think_result = item.think_result
+    if item.pub_date is None:
+        raise RuntimeError(f"Missing pub_date for item {item.id}")
+
     return MiningTask(
         feed_id=feed.id,
         feed_url=feed.url,
