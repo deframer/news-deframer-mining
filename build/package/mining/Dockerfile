@@ -19,4 +19,4 @@ RUN --mount=type=cache,target=/root/.cache/uv \
     uv pip install --system .
 
 # Run the application
-CMD ["/bin/bash", "-c", "download-models && miner-cli"]
+CMD ["miner-cli"]

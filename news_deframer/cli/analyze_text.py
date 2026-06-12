@@ -4,13 +4,28 @@ from __future__ import annotations
 
 import argparse
 import json
+import logging
+import os
 import sys
 from typing import Optional, Sequence
 
+from news_deframer.config import Config
 from news_deframer.cli.analyzer import analyze_file
+from news_deframer.logger import configure_logging
+from news_deframer.model_store import ensure_model_storage
 
 
 def main(argv: Optional[Sequence[str]] = None) -> int:
+    verbose = os.getenv("VERBOSE", "").lower() not in {"", "0", "false", "off"}
+    if verbose:
+        logging.disable(logging.NOTSET)
+        configure_logging("INFO", stream=sys.stderr)
+    else:
+        logging.disable(logging.CRITICAL)
+
+    config = Config.load()
+    ensure_model_storage()
+
     parser = argparse.ArgumentParser(prog="analyze-text", description="Analyze text")
     parser.add_argument(
         "-i",
@@ -43,7 +58,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         )
         return 1
 
-    results = analyze_file(args.input, args.language)
+    results = analyze_file(args.input, args.language, config=config)
     json.dump(results, args.output, indent=2)
     args.output.write("\n")
 

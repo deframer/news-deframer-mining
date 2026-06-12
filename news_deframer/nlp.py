@@ -5,7 +5,11 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any, Iterable, Optional, Sequence
 from bs4 import BeautifulSoup
 
-from news_deframer.spacy_models import SPACY_LANGUAGE_MODELS
+from news_deframer.config import Config
+from news_deframer.spacy_models import (
+    get_spacy_model,
+    get_spacy_model_name as _registry_spacy_model_name,
+)
 
 try:  # pragma: no cover - optional dependency
     import spacy
@@ -30,6 +34,7 @@ def stem_category(
     text: Optional[str],
     language: str,
     stop_words: Optional[Iterable[str]] = None,
+    config: Config | None = None,
 ) -> Optional[str]:
     """Return the lemmatized version of a category string."""
     if not text:
@@ -40,7 +45,7 @@ def stem_category(
         return None
 
     custom_stops = set(w.lower() for w in (stop_words or []))
-    nlp = _get_spacy_model(language, with_ner=False)
+    nlp = _get_spacy_model(language, config=config, with_ner=False)
     try:
         doc = nlp(normalized)
     except Exception as exc:
@@ -57,7 +62,6 @@ def stem_category(
     return " ".join(lemmas) if lemmas else None
 
 
-_NLP_CACHE: dict[tuple[str, bool], SpacyLanguage] = {}
 _STOPWORD_CACHE: dict[str, frozenset[str]] = {}
 
 
@@ -70,29 +74,14 @@ def _get_spacy_model_name(language: str) -> str:
     """Retrieve the spaCy model name for a given language code."""
     if spacy is None:
         raise RuntimeError("spaCy is required but not installed")
-
-    lang_code = _get_language_code(language)
-    model_name = SPACY_LANGUAGE_MODELS.get(lang_code)
-    if not model_name:
-        raise RuntimeError(f"No spaCy model available for language '{language}'")
-    return model_name
+    return _registry_spacy_model_name(language)
 
 
-def _get_spacy_model(language: str, with_ner: bool = True) -> SpacyLanguage:
-    model_name = _get_spacy_model_name(language)
-    cache_key = (model_name, with_ner)
-
-    if cache_key in _NLP_CACHE:
-        return _NLP_CACHE[cache_key]
-
-    try:
-        disable = () if with_ner else ("ner",)
-        model = spacy.load(model_name, disable=disable)
-    except Exception as exc:  # pragma: no cover - propagate failure gracefully
-        raise RuntimeError(f"Failed to load spaCy model '{model_name}'") from exc
-
-    _NLP_CACHE[cache_key] = model
-    return model
+def _get_spacy_model(
+    language: str, config: Config | None = None, with_ner: bool = True
+) -> SpacyLanguage:
+    _get_spacy_model_name(language)
+    return get_spacy_model(language, config=config, with_ner=with_ner)
 
 
 def _get_stopwords(language: str) -> frozenset[str]:
@@ -141,6 +130,7 @@ def extract_stems(
     language: str,
     stop_words: Optional[Iterable[str]] = None,
     with_ner: bool = True,
+    config: Config | None = None,
 ) -> tuple[Sequence[str], Sequence[str], Sequence[str]]:
     """
     Return noun, verb, and adjective lemmas using spaCy with NER integration.
@@ -155,7 +145,7 @@ def extract_stems(
         return [], [], []
 
     custom_stops = set(w.lower() for w in (stop_words or []))
-    nlp = _get_spacy_model(language, with_ner=with_ner)
+    nlp = _get_spacy_model(language, config=config, with_ner=with_ner)
 
     try:
         doc = nlp(normalized)
@@ -207,6 +197,7 @@ def extract_stems_simple(
     content: str,
     language: str,
     stop_words: Optional[Iterable[str]] = None,
+    config: Config | None = None,
 ) -> tuple[Sequence[str], Sequence[str], Sequence[str]]:
     # TODO: you must implement Named Entity Recognition (NER) as described in Chapter 12.3.2 of the thesis
     # Filter: Only keep meaningful entities (Person, Org, GPE/Location)
@@ -221,7 +212,7 @@ def extract_stems_simple(
         return [], [], []
 
     custom_stops = set(w.lower() for w in (stop_words or []))
-    nlp = _get_spacy_model(language, with_ner=False)
+    nlp = _get_spacy_model(language, config=config, with_ner=False)
 
     try:
         doc = nlp(normalized)

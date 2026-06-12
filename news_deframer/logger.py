@@ -1,5 +1,7 @@
 import json
+import importlib.util
 import logging
+from pathlib import Path
 import sys
 
 
@@ -80,11 +82,58 @@ class ExtraFormatter(logging.Formatter):
         return base
 
 
-def configure_logging(log_level: str = "INFO") -> None:
+def _format_bytes(size_bytes: int | None) -> str:
+    if size_bytes is None:
+        return "unknown"
+
+    size = float(size_bytes)
+    for unit in ("B", "KB", "MB", "GB", "TB"):
+        if size < 1000.0 or unit == "TB":
+            return f"{size:.1f}{unit}"
+        size /= 1000.0
+
+    return "unknown"
+
+
+def _get_rss_bytes() -> int | None:
+    try:
+        with Path("/proc/self/status").open("r", encoding="utf-8") as status_file:
+            for line in status_file:
+                if line.startswith("VmRSS:"):
+                    parts = line.split()
+                    if len(parts) >= 2:
+                        return int(parts[1]) * 1024
+    except OSError:
+        return None
+    return None
+
+
+def _get_package_size_bytes(package_name: str) -> int | None:
+    spec = importlib.util.find_spec(package_name)
+    locations = getattr(spec, "submodule_search_locations", None) if spec else None
+    if not locations:
+        return None
+
+    package_dir = next(iter(locations), None)
+    if package_dir is None:
+        return None
+
+    root = package_dir if isinstance(package_dir, str) else str(package_dir)
+    total = 0
+    for entry in Path(root).rglob("*"):
+        if entry.is_file():
+            try:
+                total += entry.stat().st_size
+            except FileNotFoundError:
+                continue
+    return total or None
+
+
+def configure_logging(log_level: str = "INFO", stream=sys.stdout) -> None:
     """Configures the root logger and ensures extra data is visible."""
     level = getattr(logging, log_level.upper(), logging.INFO)
 
-    handler = logging.StreamHandler(sys.stdout)
+    handler = logging.StreamHandler(stream)
     handler.setFormatter(
         ExtraFormatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
     )

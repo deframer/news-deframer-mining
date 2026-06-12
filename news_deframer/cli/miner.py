@@ -9,15 +9,18 @@ from typing import Optional, Sequence
 from news_deframer import poller as poller_module
 from news_deframer.config import Config
 from news_deframer.logger import configure_logging
+from news_deframer.model_store import ensure_model_storage
 
 logger = logging.getLogger(__name__)
 
 
 def main(argv: Optional[Sequence[str]] = None) -> int:
-    parser = argparse.ArgumentParser(prog="miner", description="News Deframer Miner")
-    parser.parse_args(argv)
-
     config = Config.load()
+    parser = argparse.ArgumentParser(
+        prog=config.application_name, description=config.application_name
+    )
+    parser.parse_args(argv)
+    ensure_model_storage()
     configure_logging(config.log_level)
     logger.debug("Starting mining poller")
 

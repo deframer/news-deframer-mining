@@ -7,6 +7,7 @@ from typing import Optional, Sequence
 
 from news_deframer.config import Config
 from news_deframer.logger import configure_logging
+from news_deframer.model_store import ensure_model_storage
 from news_deframer.postgres import Postgres
 from news_deframer.sentiments import extract_sentiments_array
 from news_deframer.netutil import get_base_domain_name
@@ -19,6 +20,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     _ = argv
 
     config = Config.load()
+    ensure_model_storage()
     configure_logging(config.log_level)
     repository = Postgres(config)
     trends, items_and_feeds = repository.fetch_trends_without_sentiments(limit=100)
@@ -33,6 +35,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             sentiment = extract_sentiments_array(
                 (trend.noun_stems, trend.verb_stems, trend.adjective_stems),
                 trend.language,
+                config=config,
             )
 
             # Add to updates only if sentiment is not None
@@ -67,12 +70,14 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                     trend.language,
                     stop_words=stop_words,
                     with_ner=with_ner,
+                    config=config,
                 )
             )
             sentiments_deframed = (
                 extract_sentiments_array(
                     (noun_stems_deframed, verb_stems_deframed, adj_stems_deframed),
                     trend.language,
+                    config=config,
                 )
                 or {}
             )

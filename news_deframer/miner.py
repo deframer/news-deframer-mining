@@ -56,11 +56,13 @@ class Miner:
             task.language,
             stop_words=task.stop_words,
             with_ner=with_ner,
+            config=self.config,
         )
         sentiments = (
             extract_sentiments_array(
                 (noun_stems, verb_stems, adj_stems),
                 task.language,
+                config=self.config,
             )
             or {}
         )
@@ -75,11 +77,13 @@ class Miner:
             task.language,
             stop_words=task.stop_words,
             with_ner=with_ner,
+            config=self.config,
         )
         sentiments_deframed = (
             extract_sentiments_array(
                 (noun_stems_deframed, verb_stems_deframed, adj_stems_deframed),
                 task.language,
+                config=self.config,
             )
             or {}
         )
@@ -87,7 +91,10 @@ class Miner:
         category_stems = []
         for c in task.categories:
             if stemmed := stem_category(
-                sanitize_text(c), task.language, stop_words=task.stop_words
+                sanitize_text(c),
+                task.language,
+                stop_words=task.stop_words,
+                config=self.config,
             ):
                 category_stems.append(stemmed)
 

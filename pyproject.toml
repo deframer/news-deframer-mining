@@ -8,17 +8,16 @@ dependencies = [
     "beautifulsoup4",
     "numpy>=2.4.4,<3.0",
     "psycopg2-binary",
+    "click",
     "pydantic-settings",
     "pyarrow",
     "python-dotenv",
     "publicsuffix2",
-    "spacy>=3.8.14,<3.10.0",
-    "en-core-web-lg @ https://github.com/explosion/spacy-models/releases/download/en_core_web_lg-3.8.0/en_core_web_lg-3.8.0-py3-none-any.whl"
+    "spacy>=3.8.14,<3.10.0"
 ]
 
 [project.scripts]
 miner-cli = "news_deframer.cli.miner:main"
-download-models = "news_deframer.cli.download_models:main"
 
 [dependency-groups]
 dev = [
@@ -26,8 +25,6 @@ dev = [
     "pytest",
     "mypy",
     "types-psycopg2",
-    "de-core-news-lg @ https://github.com/explosion/spacy-models/releases/download/de_core_news_lg-3.8.0/de_core_news_lg-3.8.0-py3-none-any.whl",
-    "fr-core-news-lg @ https://github.com/explosion/spacy-models/releases/download/fr_core_news_lg-3.8.0/fr_core_news_lg-3.8.0-py3-none-any.whl",
 ]
 
 [tool.pytest.ini_options]

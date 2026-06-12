@@ -15,6 +15,8 @@ This approach may be based on the findings in this [PhD Thesis](https://refubium
 
 We use a VAD/VAC (Dimensional) and BE5 (Discrete) approach to detect sentiments and emotions in texts, leveraging sentiment scores from [MEmoLon](https://github.com/JULIELab/MEmoLon), an emotion lexicon for 90+ languages. The **VAD** (Valence, Arousal, Dominance) model evaluates overall mood on a 1-9 scale across Valence (polarity/pleasantness), Arousal (activation/excitement), and Dominance (perceived control). The **BE5** model measures the intensity of discrete emotions—Joy, Anger, Sadness, Fear, and Disgust—on a 1-5 scale.
 
+Models are lazily loaded: on first use they download into ignored `models/spacy/` and `models/memolon/` directories, then stay cached in memory for the running process.
+
 There is fundamental science supporting this methodology: fMRT experiments demonstrate that reading specific words can indeed induce measurable emotional responses in the brain. For more details on this theory, refer to this [PhD thesis](https://edoc.ub.uni-muenchen.de/18933/1/Danner_Sandro_C.pdf).
 
 

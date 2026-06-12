@@ -35,8 +35,9 @@ def poll(config: Config) -> None:
     previous_sigterm = _install_sigterm_handler()
     try:
         while True:
-            if poll_next_feed(config, miner, repository):
-                logger.info("A feed was mined")
+            items_mined = poll_next_feed(config, miner, repository)
+            if items_mined:
+                logger.info("Mined %s items", items_mined)
                 continue
 
             logger.info("Sleeping... duration=%s", IDLE_SLEEP_TIME)
@@ -49,7 +50,7 @@ def poll(config: Config) -> None:
 
 def poll_next_feed(
     config: Config, miner: Miner, repository: Optional[Any] = None
-) -> bool:
+) -> int:
     repo = repository or Postgres(config)
     logger.info("poll_next_feed")
 
@@ -57,37 +58,38 @@ def poll_next_feed(
         feed = repo.begin_mine_update(DEFAULT_LOCK_DURATION)
     except Exception as exc:  # pragma: no cover - db failure path
         logger.error("Failed to query next feed to mine", exc_info=exc)
-        return False
+        return 0
 
     if feed is None:
-        return False
+        return 0
 
+    items_mined = 0
     try:
-        poll_feed(feed, miner, repo)
+        items_mined = poll_feed(feed, miner, repo)
     except Exception as exc:  # pragma: no cover - mining failure path
         logger.error(
             "Feed mining failed", extra={"feed_id": str(feed.id)}, exc_info=exc
         )
+    finally:
+        try:
+            repo.end_mine_update(feed.id, POLLING_INTERVAL)
+        except Exception as exc:  # pragma: no cover - db failure path
+            logger.error(
+                "Failed to end feed update",
+                extra={"feed_id": str(feed.id)},
+                exc_info=exc,
+            )
 
-    try:
-        repo.end_mine_update(feed.id, POLLING_INTERVAL)
-    except Exception as exc:  # pragma: no cover - db failure path
-        logger.error(
-            "Failed to end feed update",
-            extra={"feed_id": str(feed.id)},
-            exc_info=exc,
-        )
-
-    return True
+    return items_mined
 
 
-def poll_feed(feed: Feed, miner: Miner, repository: Any) -> Optional[Exception]:
+def poll_feed(feed: Feed, miner: Miner, repository: Any) -> int:
+    mined_count = 0
     items = repository.fetch_pending_items(feed.id, feed.url)
-    items = [item for item in items if item.feed_id == feed.id]
     feed_label = feed.url or str(feed.id)
     if not items:
         logger.info("No pending items to mine for feed %s", feed_label)
-        return None
+        return 0
 
     # flush cache
     flush_domain_cache()
@@ -103,6 +105,7 @@ def poll_feed(feed: Feed, miner: Miner, repository: Any) -> Optional[Exception]:
             #     task.description,
             # )
             miner.mine_item(task)
+            mined_count += 1
         except Exception as exc:  # pragma: no cover - per-item failure
             logger.error(
                 "Failed to process item",
@@ -112,9 +115,9 @@ def poll_feed(feed: Feed, miner: Miner, repository: Any) -> Optional[Exception]:
                 },
                 exc_info=exc,
             )
-            return exc
+            return mined_count
 
-    return None
+    return mined_count
 
 
 def _install_sigterm_handler() -> signal.Handlers | None:
@@ -150,7 +153,7 @@ def _build_task(feed: Feed, item: Item) -> MiningTask:
         )
 
     categories = sorted({*feed.categories, *item.categories})
-    domain = feed.root_domain or get_root_domain(feed.url)
+    domain = get_root_domain(feed.url)
     base_domain = get_base_domain_name(feed.url)
 
     # we split here for apollo-news also at the -
@@ -159,6 +162,9 @@ def _build_task(feed: Feed, item: Item) -> MiningTask:
     )
 
     think_result = item.think_result
+    if item.pub_date is None:
+        raise RuntimeError(f"Missing pub_date for item {item.id}")
+
     return MiningTask(
         feed_id=feed.id,
         feed_url=feed.url,

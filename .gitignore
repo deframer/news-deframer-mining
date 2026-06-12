@@ -30,4 +30,4 @@ core*
 .core*
 
 # Models
-memolon/
+models/

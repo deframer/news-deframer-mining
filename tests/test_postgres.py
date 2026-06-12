@@ -10,11 +10,11 @@ import news_deframer.postgres as postgres_module
 
 
 def make_config() -> Config:
-    return Config(
-        dsn="postgres://local",
-        log_level="INFO",
-        log_database=False,
-    )
+    config = Config.load()
+    config.dsn = "postgres://local"
+    config.log_level = "INFO"
+    config.log_database = False
+    return config
 
 
 @dataclass
@@ -50,6 +50,7 @@ class CursorStub:
 @dataclass
 class ConnectionStub:
     cursor_stub: CursorStub
+    connect_kwargs: dict[str, object] = field(default_factory=dict)
 
     def __enter__(self):
         return self
@@ -65,6 +66,7 @@ def patch_connect(monkeypatch, cursor_stub):
     conn = ConnectionStub(cursor_stub)
 
     def fake_connect(*args, **kwargs):
+        conn.connect_kwargs = kwargs
         return conn
 
     monkeypatch.setattr(
@@ -84,12 +86,20 @@ def test_begin_mine_update_returns_none(monkeypatch):
     assert any("SELECT" in call[0].upper() for call in cursor.execute_calls)
 
 
+def test_connect_uses_application_name(monkeypatch):
+    cursor = CursorStub()
+    conn = patch_connect(monkeypatch, cursor)
+    repo = postgres_module.Postgres(make_config())
+
+    _ = repo._get_connection()
+
+    assert conn.connect_kwargs["application_name"] == make_config().application_name
+
+
 def test_begin_mine_update_returns_feed(monkeypatch):
     feed_id = uuid4()
     cursor = CursorStub(
-        fetchone_queue=[
-            (feed_id, ["cat1", "cat2"], "EN", "https://feed.example", "feed.example")
-        ]
+        fetchone_queue=[(feed_id, ["cat1", "cat2"], "EN", "https://feed.example")]
     )
     patch_connect(monkeypatch, cursor)
     repo = postgres_module.Postgres(make_config())
@@ -101,7 +111,6 @@ def test_begin_mine_update_returns_feed(monkeypatch):
     assert feed.categories == ["cat1", "cat2"]
     assert feed.language == "en"
     assert feed.url == "https://feed.example"
-    assert feed.root_domain == "feed.example"
     assert len(cursor.execute_calls) >= 2  # select + update
 
 
@@ -113,7 +122,6 @@ def test_fetch_pending_items(monkeypatch):
         [
             (
                 item_id,
-                feed_id,
                 ["x"],
                 "es",
                 datetime(2024, 6, 1, 12, 0, 0),
@@ -131,7 +139,7 @@ def test_fetch_pending_items(monkeypatch):
 
     assert len(items) == 1
     assert items[0].id == item_id
-    assert items[0].feed_id == feed_id
+    assert items[0].feed_id is None
     assert items[0].categories == ["x"]
     assert items[0].language == "es"
     assert items[0].pub_date == datetime(2024, 6, 1, 12, 0, 0)
@@ -190,30 +198,11 @@ def test_fetch_trends_without_sentiments(monkeypatch):
         [
             (
                 item_id,
-                feed_id,
                 "de",
-                datetime(2024, 6, 1, 12, 0, 0),
-                ["wirtschaft"],
                 ["käse"],
                 ["essen"],
                 ["gut"],
-                "example.de",
-                None,
-                None,
-                None,
-                None,
-                None,
-                None,
-                None,
-                None,
-                None,
-                None,
-                None,
-                None,
-                None,
-                None,
-                None,
-                None,
+                *([None] * 16),
             )
         ],
         # Second call: items query (_fetch_items_by_ids)
@@ -221,9 +210,6 @@ def test_fetch_trends_without_sentiments(monkeypatch):
             (
                 item_id,
                 feed_id,
-                ["wirtschaft"],
-                "de",
-                datetime(2024, 6, 1, 12, 0, 0),
                 "Original title",
                 "Corrected title",
                 "Original description",
@@ -231,15 +217,7 @@ def test_fetch_trends_without_sentiments(monkeypatch):
             )
         ],
         # Third call: feeds query (_fetch_feeds_by_ids)
-        [
-            (
-                feed_id,
-                "https://feed.example",
-                ["wirtschaft"],
-                "de",
-                "example.de",
-            )
-        ],
+        [(feed_id, "https://feed.example")],
     ]
     patch_connect(monkeypatch, cursor)
     repo = postgres_module.Postgres(make_config())
@@ -249,13 +227,13 @@ def test_fetch_trends_without_sentiments(monkeypatch):
     assert len(trends) == 1
     trend = trends[0]
     assert trend.item_id == item_id
-    assert trend.feed_id == feed_id
     assert trend.language == "de"
-    assert trend.category_stems == ["wirtschaft"]
+    assert trend.category_stems == []
     assert trend.noun_stems == ["käse"]
     assert trend.verb_stems == ["essen"]
     assert trend.adjective_stems == ["gut"]
-    assert trend.root_domain == "example.de"
+    assert trend.feed_id is None
+    assert trend.pub_date is None
     assert trend.sentiments == {}
     assert trend.sentiments_deframed == {}
     # Check that we got the item and feed for this trend
@@ -263,9 +241,6 @@ def test_fetch_trends_without_sentiments(monkeypatch):
     item, feed = items_and_feeds[item_id]
     assert item.id == item_id
     assert item.feed_id == feed_id
-    assert item.categories == ["wirtschaft"]
-    assert item.language == "de"
-    assert item.pub_date == datetime(2024, 6, 1, 12, 0, 0)
     assert item.think_result is not None
     assert item.think_result.title_corrected == "Corrected title"
     items_sql = cursor.execute_calls[1][0]
@@ -273,9 +248,8 @@ def test_fetch_trends_without_sentiments(monkeypatch):
     assert "i.think_error_count = 0" in items_sql
     assert feed.id == feed_id
     assert feed.url == "https://feed.example"
-    assert feed.categories == ["wirtschaft"]
-    assert feed.language == "de"
-    assert feed.root_domain == "example.de"
+    assert feed.categories == []
+    assert feed.language is None
     # Check that we made 3 calls: trends, items, feeds
     assert len(cursor.execute_calls) >= 3
     trends_sql = cursor.execute_calls[0][0]
