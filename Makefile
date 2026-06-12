@@ -69,15 +69,3 @@ fix:
 
 sync:
 	uv sync
-
-SQL_DIR := sql
-
-$(SQL_DIR)/%.sql: FORCE
-	docker run --rm -i --network host \
-		-v "$(CURDIR):/workspace" \
-		-w /workspace \
-		$(DB_IMAGE) \
-		psql "postgres://$${DB_USER}:$${DB_PASSWORD}@$${DB_HOST}:$${DB_PORT}/$${DB_NAME}" \
-		-f $@
-
-FORCE:

@@ -8,6 +8,7 @@ dependencies = [
     "beautifulsoup4",
     "numpy>=2.4.4,<3.0",
     "psycopg2-binary",
+    "click",
     "pydantic-settings",
     "pyarrow",
     "python-dotenv",
