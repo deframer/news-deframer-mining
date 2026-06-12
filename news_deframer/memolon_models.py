@@ -10,7 +10,7 @@ from news_deframer.logger import _format_bytes, _get_rss_bytes
 from news_deframer.model_store import (
     acquire_lock,
     download_url_to_path,
-    get_project_root as get_workspace_root,
+    get_model_root,
 )
 
 try:  # pragma: no cover - optional dependency behavior
@@ -40,12 +40,8 @@ def _get_language_code(language: str) -> str:
     return (language or "").split("-")[0].lower()
 
 
-def get_project_root() -> Path:
-    return get_workspace_root()
-
-
 def _get_memolon_root() -> Path:
-    return get_project_root() / "models" / "memolon"
+    return get_model_root() / "memolon"
 
 
 def _get_memolon_lock_path(filename: str) -> Path:

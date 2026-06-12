@@ -15,8 +15,19 @@ def get_project_root() -> Path:
     return Path(__file__).resolve().parent.parent
 
 
+def get_model_root() -> Path:
+    model_root = os.environ.get("MODEL_ROOT")
+    if model_root:
+        return Path(model_root)
+
+    candidate = get_project_root() / "models"
+    if candidate.exists() and not os.access(candidate, os.W_OK):
+        return Path.home() / ".cache" / "news-deframer-miner" / "models"
+    return candidate
+
+
 def ensure_model_storage() -> None:
-    root = get_project_root() / "models"
+    root = get_model_root()
     targets = [
         root,
         root / "spacy",
