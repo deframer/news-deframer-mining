@@ -29,7 +29,9 @@ def ensure_model_storage() -> None:
         try:
             target.mkdir(parents=True, exist_ok=True)
         except OSError as exc:
-            raise RuntimeError(f"Failed to create model storage directory: {target}") from exc
+            raise RuntimeError(
+                f"Failed to create model storage directory: {target}"
+            ) from exc
 
 
 @contextmanager
@@ -53,18 +55,17 @@ def download_url_to_path(url: str, target_path: Path, timeout: int = 60) -> None
     os.close(fd)
     temp_path = Path(temp_name)
     try:
-        with urllib.request.urlopen(url, timeout=timeout) as response, temp_path.open(
-            "wb"
-        ) as target_file:
+        with (
+            urllib.request.urlopen(url, timeout=timeout) as response,
+            temp_path.open("wb") as target_file,
+        ):
             shutil.copyfileobj(response, target_file)
         os.replace(temp_path, target_path)
     finally:
         temp_path.unlink(missing_ok=True)
 
 
-def download_wheel_to_directory(
-    url: str, target_dir: Path, timeout: int = 60
-) -> None:
+def download_wheel_to_directory(url: str, target_dir: Path, timeout: int = 60) -> None:
     target_dir.parent.mkdir(parents=True, exist_ok=True)
     fd, temp_name = tempfile.mkstemp(
         dir=target_dir.parent,
@@ -73,7 +74,9 @@ def download_wheel_to_directory(
     )
     os.close(fd)
     wheel_path = Path(temp_name)
-    temp_dir = Path(tempfile.mkdtemp(dir=target_dir.parent, prefix=f".{target_dir.name}."))
+    temp_dir = Path(
+        tempfile.mkdtemp(dir=target_dir.parent, prefix=f".{target_dir.name}.")
+    )
     try:
         download_url_to_path(url, wheel_path, timeout=timeout)
         with zipfile.ZipFile(wheel_path) as archive:

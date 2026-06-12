@@ -99,9 +99,7 @@ def test_connect_uses_application_name(monkeypatch):
 def test_begin_mine_update_returns_feed(monkeypatch):
     feed_id = uuid4()
     cursor = CursorStub(
-        fetchone_queue=[
-            (feed_id, ["cat1", "cat2"], "EN", "https://feed.example")
-        ]
+        fetchone_queue=[(feed_id, ["cat1", "cat2"], "EN", "https://feed.example")]
     )
     patch_connect(monkeypatch, cursor)
     repo = postgres_module.Postgres(make_config())

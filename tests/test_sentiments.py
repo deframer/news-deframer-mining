@@ -125,7 +125,9 @@ def test_extract_sentiments_uses_cached_model(monkeypatch, tmp_path) -> None:
     assert read_calls == 1
 
 
-def test_extract_sentiments_returns_none_for_missing_word(monkeypatch, tmp_path) -> None:
+def test_extract_sentiments_returns_none_for_missing_word(
+    monkeypatch, tmp_path
+) -> None:
     class DummyColumn:
         def __init__(self, values: list[object]):
             self._values = values

@@ -103,7 +103,9 @@ def _find_spacy_model_path(model_root: Path) -> Path:
         model_root.rglob("config.cfg"), key=lambda path: len(path.parts)
     )
     if not config_files:
-        raise RuntimeError(f"Downloaded spaCy model at '{model_root}' has no config.cfg")
+        raise RuntimeError(
+            f"Downloaded spaCy model at '{model_root}' has no config.cfg"
+        )
     return config_files[0].parent
 
 
@@ -133,13 +135,19 @@ def ensure_spacy_model(language: str, config: Config | None = None) -> Path:
                 _get_spacy_release_url(model_name, spacy_version), model_root
             )
         except Exception as exc:  # pragma: no cover - network failure propagation
-            raise RuntimeError(f"Failed to download spaCy model '{model_name}'") from exc
+            raise RuntimeError(
+                f"Failed to download spaCy model '{model_name}'"
+            ) from exc
         elapsed = time.perf_counter() - started_at
         logger.info(
             "Downloaded spaCy model '%s' in %.3fs",
             model_name,
             elapsed,
-            extra={"language": language, "version": spacy_version, "path": str(model_root)},
+            extra={
+                "language": language,
+                "version": spacy_version,
+                "path": str(model_root),
+            },
         )
 
     return _find_spacy_model_path(model_root)

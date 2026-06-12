@@ -93,13 +93,19 @@ def ensure_memolon_model(language: str, config: Config | None = None) -> Path:
                 _get_memolon_release_url(filename, memolon_version), model_path
             )
         except Exception as exc:  # pragma: no cover - network failure propagation
-            raise RuntimeError(f"Failed to download Memolon model '{filename}'") from exc
+            raise RuntimeError(
+                f"Failed to download Memolon model '{filename}'"
+            ) from exc
         elapsed = time.perf_counter() - started_at
         logger.info(
             "Downloaded Memolon model '%s' in %.3fs",
             filename,
             elapsed,
-            extra={"language": language, "version": memolon_version, "path": str(model_path)},
+            extra={
+                "language": language,
+                "version": memolon_version,
+                "path": str(model_path),
+            },
         )
 
     return model_path
@@ -135,7 +141,9 @@ def load_memolon_model(
     if "word" not in table.column_names:
         raise RuntimeError(f"Memolon model '{filename}' has no 'word' column")
 
-    lowercase_word_list = [str(word).lower() for word in table.column("word").to_pylist()]
+    lowercase_word_list = [
+        str(word).lower() for word in table.column("word").to_pylist()
+    ]
     cached_model = (table, lowercase_word_list)
 
     elapsed = time.perf_counter() - started_at

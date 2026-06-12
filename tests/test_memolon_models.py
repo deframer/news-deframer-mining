@@ -9,8 +9,13 @@ def test_get_memolon_model_path_uses_local_filesystem(monkeypatch, tmp_path) -> 
 
     model_path = memolon_models.get_memolon_model_path("en")
 
-    expected = tmp_path / "models" / "memolon" / memolon_models.MEMOLON_LANGUAGE_MODELS["en"].replace(
-        "<MEMOLON_VERSION>", Config.load().memolon_version
+    expected = (
+        tmp_path
+        / "models"
+        / "memolon"
+        / memolon_models.MEMOLON_LANGUAGE_MODELS["en"].replace(
+            "<MEMOLON_VERSION>", Config.load().memolon_version
+        )
     )
     assert model_path == expected
 
