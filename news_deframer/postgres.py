@@ -36,8 +36,8 @@ class ThinkResult:
 @dataclass
 class Item:
     id: UUID
-    feed_id: UUID
-    pub_date: datetime
+    feed_id: Optional[UUID] = None
+    pub_date: Optional[datetime] = None
     categories: list[str] = field(default_factory=list)
     language: Optional[str] = None
     think_result: Optional[ThinkResult] = None
@@ -46,10 +46,10 @@ class Item:
 @dataclass
 class Trend:
     item_id: UUID
-    feed_id: UUID
     language: str
-    pub_date: datetime
-    root_domain: str
+    feed_id: Optional[UUID] = None
+    pub_date: Optional[datetime] = None
+    root_domain: Optional[str] = None
     category_stems: list[str] = field(default_factory=list)
     noun_stems: list[str] = field(default_factory=list)
     verb_stems: list[str] = field(default_factory=list)
@@ -83,7 +83,7 @@ class Postgres:
         """Attempt to lock the next feed ready for mining."""
         lock_seconds = max(int(lock_duration), 0)
         select_sql = """
-            SELECT fs.id, f.categories, f.language, f.url, f.root_domain
+            SELECT fs.id, f.categories, f.language, f.url
             FROM feed_schedules AS fs
             JOIN feeds AS f ON f.id = fs.id
             WHERE fs.next_mining_at IS NOT NULL
@@ -120,7 +120,6 @@ class Postgres:
                 if url is None:
                     raise RuntimeError("Feed record missing URL")
                 feed_url = str(url)
-                root_domain = str(row[4]) if row[4] is not None else None
                 feed_label = feed_url or str(feed_id)
                 self._logger.debug("Locked feed %s for mining", feed_label)
                 return Feed(
@@ -128,7 +127,6 @@ class Postgres:
                     url=feed_url,
                     categories=list(categories),
                     language=_normalize_language_value(language),
-                    root_domain=root_domain,
                 )
 
     def end_mine_update(self, feed_id: UUID, polling_interval: int) -> None:
@@ -180,7 +178,6 @@ class Postgres:
         sql = """
             SELECT
                 i.id,
-                i.feed_id,
                 i.categories,
                 i.language,
                 i.pub_date,
@@ -204,15 +201,14 @@ class Postgres:
                 items = [
                     Item(
                         id=row[0],
-                        feed_id=row[1],
-                        categories=list(row[2] or []),
-                        language=_normalize_language_value(row[3]),
-                        pub_date=row[4],
+                        categories=list(row[1] or []),
+                        language=_normalize_language_value(row[2]),
+                        pub_date=row[3],
                         think_result=ThinkResult(
-                            title_original=row[5],
-                            title_corrected=row[6],
-                            description_original=row[7],
-                            description_corrected=row[8],
+                            title_original=row[4],
+                            title_corrected=row[5],
+                            description_original=row[6],
+                            description_corrected=row[7],
                         ),
                     )
                     for row in rows
@@ -234,9 +230,6 @@ class Postgres:
             SELECT
                 i.id,
                 i.feed_id,
-                i.categories,
-                i.language,
-                i.pub_date,
                 i.think_result->>'title_original' AS title_original,
                 i.think_result->>'title_corrected' AS title_corrected,
                 i.think_result->>'description_original' AS description_original,
@@ -257,14 +250,11 @@ class Postgres:
                     item = Item(
                         id=row[0],
                         feed_id=row[1],
-                        categories=list(row[2] or []),
-                        language=_normalize_language_value(row[3]),
-                        pub_date=row[4],
                         think_result=ThinkResult(
-                            title_original=row[5],
-                            title_corrected=row[6],
-                            description_original=row[7],
-                            description_corrected=row[8],
+                            title_original=row[2],
+                            title_corrected=row[3],
+                            description_original=row[4],
+                            description_corrected=row[5],
                         ),
                     )
                     items[row[0]] = item
@@ -280,10 +270,7 @@ class Postgres:
         sql = f"""
             SELECT
                 f.id,
-                f.url,
-                f.categories,
-                f.language,
-                f.root_domain
+                f.url
             FROM feeds f
             WHERE f.id IN ({placeholders})
         """
@@ -295,13 +282,7 @@ class Postgres:
                 rows = cur.fetchall()
                 feeds = {}
                 for row in rows:
-                    feed = Feed(
-                        id=row[0],
-                        url=row[1],
-                        categories=list(row[2] or []),
-                        language=_normalize_language_value(row[3]),
-                        root_domain=row[4],
-                    )
+                    feed = Feed(id=row[0], url=row[1])
                     feeds[row[0]] = feed
                 return feeds
 
@@ -368,14 +349,10 @@ class Postgres:
         sql_trends = """
             SELECT
                 t.item_id,
-                t.feed_id,
                 t.language,
-                t.pub_date,
-                t.category_stems,
                 t.noun_stems,
                 t.verb_stems,
                 t.adjective_stems,
-                t.root_domain,
                 t.sentiments->>'v' AS sentiments_v,
                 t.sentiments->>'a' AS sentiments_a,
                 t.sentiments->>'d' AS sentiments_d,
@@ -410,18 +387,14 @@ class Postgres:
                     set()
                 )  # item_ids where we need to load full item/feed data
                 for row in rows:
-                    sentiments = _sentiment_from_row(row, 9)
-                    sentiments_deframed = _sentiment_from_row(row, 17)
+                    sentiments = _sentiment_from_row(row, 5)
+                    sentiments_deframed = _sentiment_from_row(row, 13)
                     trend = Trend(
                         item_id=row[0],
-                        feed_id=row[1],
-                        language=row[2],
-                        pub_date=row[3],
-                        category_stems=list(row[4] or []),
-                        noun_stems=list(row[5] or []),
-                        verb_stems=list(row[6] or []),
-                        adjective_stems=list(row[7] or []),
-                        root_domain=row[8],
+                        language=row[1],
+                        noun_stems=list(row[2] or []),
+                        verb_stems=list(row[3] or []),
+                        adjective_stems=list(row[4] or []),
                         sentiments=sentiments,
                         sentiments_deframed=sentiments_deframed,
                     )

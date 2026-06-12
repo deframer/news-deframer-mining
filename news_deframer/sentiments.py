@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
+import logging
+import time
 from statistics import mean
 from pathlib import Path
 from typing import Any, Sequence, TypedDict, cast
 
+from news_deframer.logger import _format_bytes, _get_rss_bytes
 from news_deframer.memolon_models import MEMOLON_LANGUAGE_MODELS
 
 try:  # pragma: no cover - optional dependency behavior
@@ -15,6 +18,9 @@ except Exception:  # pragma: no cover - optional dependency behavior
 
 
 _MEMOLON_CACHE: dict[str, tuple[Any, list[str]]] = {}
+
+
+logger = logging.getLogger(__name__)
 
 # Aggregation motivation:
 # - Median is robust to outliers, but in NLP those "outliers" are often the
@@ -127,17 +133,53 @@ def _get_memolon_model(language: str) -> tuple[Any, list[str]]:
     if not model_path.exists():
         raise RuntimeError(f"Memolon model file not found: {model_path}")
 
+    started_at = time.perf_counter()
+    rss_before = _get_rss_bytes()
     try:
         table = pq.read_table(model_path)
     except Exception as exc:  # pragma: no cover - propagate failure gracefully
         raise RuntimeError(f"Failed to load Memolon model '{model_filename}'") from exc
 
+    read_elapsed = time.perf_counter() - started_at
+
     if "word" not in table.column_names:
         raise RuntimeError(f"Memolon model '{model_filename}' has no 'word' column")
 
+    index_started_at = time.perf_counter()
     lowercase_word_list = [
         str(word).lower() for word in table.column("word").to_pylist()
     ]
+    index_elapsed = time.perf_counter() - index_started_at
+    total_elapsed = time.perf_counter() - started_at
+    rss_after = _get_rss_bytes()
+    rss_delta = (
+        rss_after - rss_before
+        if rss_before is not None and rss_after is not None
+        else None
+    )
+    disk_size_bytes = model_path.stat().st_size
+    table_nbytes = getattr(table, "nbytes", None)
+
+    logger.info(
+        "Loaded Memolon model '%s' in %.3fs (disk=%s, table=%s, rss_delta=%s, read=%.3fs, index=%.3fs)",
+        model_filename,
+        total_elapsed,
+        _format_bytes(disk_size_bytes),
+        _format_bytes(table_nbytes if isinstance(table_nbytes, int) else None),
+        _format_bytes(rss_delta),
+        read_elapsed,
+        index_elapsed,
+        extra={
+            "language": language,
+            "path": str(model_path),
+            "disk_size": _format_bytes(disk_size_bytes),
+            "table_size": _format_bytes(
+                table_nbytes if isinstance(table_nbytes, int) else None
+            ),
+            "rss_delta": _format_bytes(rss_delta),
+        },
+    )
+
     cached_model = (table, lowercase_word_list)
     _MEMOLON_CACHE[lang_code] = cached_model
     return cached_model

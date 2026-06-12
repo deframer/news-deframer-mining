@@ -47,7 +47,7 @@ sentiment-update:
 # Example: echo "This is a very happy and joyful day!" | make analyze-text | sed '1d' | jq -c
 # Example German: echo "Das ist ein sehr schöner Tag!" | TEXT_LANGUAGE=de make analyze-text | sed '1d' | jq -c
 analyze-text:
-	uv run python -m news_deframer.cli.analyze_text -l "$(TEXT_LANGUAGE)"
+	VERBOSE=1 uv run python -m news_deframer.cli.analyze_text -l "$(TEXT_LANGUAGE)"
 
 docker-build:
 	docker build -t $(DOCKER_REPO)/$(APP_NAME):latest -f build/package/mining/Dockerfile .

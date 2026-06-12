@@ -2,9 +2,16 @@
 
 from __future__ import annotations
 
+import logging
+import time
 from typing import TYPE_CHECKING, Any, Iterable, Optional, Sequence
 from bs4 import BeautifulSoup
 
+from news_deframer.logger import (
+    _format_bytes,
+    _get_package_size_bytes,
+    _get_rss_bytes,
+)
 from news_deframer.spacy_models import SPACY_LANGUAGE_MODELS
 
 try:  # pragma: no cover - optional dependency
@@ -16,6 +23,9 @@ if TYPE_CHECKING:  # pragma: no cover - typing only
     from spacy.language import Language as SpacyLanguage
 else:  # pragma: no cover - runtime fallback
     SpacyLanguage = Any  # type: ignore[misc,assignment]
+
+
+logger = logging.getLogger(__name__)
 
 
 def sanitize_text(value: Optional[str]) -> Optional[str]:
@@ -85,11 +95,35 @@ def _get_spacy_model(language: str, with_ner: bool = True) -> SpacyLanguage:
     if cache_key in _NLP_CACHE:
         return _NLP_CACHE[cache_key]
 
+    started_at = time.perf_counter()
+    rss_before = _get_rss_bytes()
     try:
         disable = () if with_ner else ("ner",)
         model = spacy.load(model_name, disable=disable)
     except Exception as exc:  # pragma: no cover - propagate failure gracefully
         raise RuntimeError(f"Failed to load spaCy model '{model_name}'") from exc
+
+    elapsed = time.perf_counter() - started_at
+    rss_after = _get_rss_bytes()
+    rss_delta = (
+        rss_after - rss_before
+        if rss_before is not None and rss_after is not None
+        else None
+    )
+    package_size_bytes = _get_package_size_bytes(model_name)
+    logger.info(
+        "Loaded spaCy model '%s' in %.3fs (disk=%s, rss_delta=%s)",
+        model_name,
+        elapsed,
+        _format_bytes(package_size_bytes),
+        _format_bytes(rss_delta),
+        extra={
+            "language": language,
+            "with_ner": with_ner,
+            "disk_size": _format_bytes(package_size_bytes),
+            "rss_delta": _format_bytes(rss_delta),
+        },
+    )
 
     _NLP_CACHE[cache_key] = model
     return model
