@@ -384,7 +384,9 @@ class Postgres:
 
                 # Build Trend objects and identify which ones need item/feed data
                 trends = []
-                item_ids_needed: set[UUID] = set()  # item_ids needing full item/feed data
+                item_ids_needed: set[UUID] = (
+                    set()
+                )  # item_ids needing full item/feed data
                 for row in rows:
                     sentiments = _sentiment_from_row(row, 5)
                     sentiments_deframed = _sentiment_from_row(row, 13)
@@ -411,7 +413,9 @@ class Postgres:
 
             # Get unique feed_ids from the items we fetched
             feed_ids_needed = {
-                item.feed_id for item in items_by_id.values() if item.feed_id is not None
+                item.feed_id
+                for item in items_by_id.values()
+                if item.feed_id is not None
             }
 
             # Fetch all needed feeds in one query
