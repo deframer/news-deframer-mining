@@ -22,6 +22,38 @@ def test_sanitize_text_strips_html() -> None:
     assert nlp.sanitize_text(html_text) == "Hello World\xa0!"
 
 
+def test_sanitize_text_strips_rss_description_html() -> None:
+    html_text = """
+    <description><![CDATA[<div><img width="1024" height="683" src="https://example.com/lorem.jpg" class="attachment-large size-large wp-post-image" alt="" style="margin-bottom: 15px;" decoding="async" fetchpriority="high" srcset="https://example.com/lorem.jpg 1024w, https://example.com/lorem-300x200.jpg 300w" sizes="(max-width: 1024px) 100vw, 1024px" /></div>
+    <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.</p>
+    <p>The post <a href="https://example.com/post">Lorem Ipsum Post</a> appeared first on <a href="https://example.com">Lorem Ipsum News</a>.</p>
+    ]]></description>
+    """
+
+    sanitized = nlp.sanitize_text(html_text)
+
+    assert sanitized is not None
+    assert "Lorem ipsum dolor sit amet" in sanitized
+    assert "Lorem Ipsum Post" in sanitized
+    assert "Lorem Ipsum News" in sanitized
+    assert "https://example.com/lorem.jpg" not in sanitized
+    assert "https://example.com/post" not in sanitized
+    assert "<img" not in sanitized
+    assert "<a " not in sanitized
+
+
+def test_sanitize_text_keeps_plain_cdata_text() -> None:
+    html_text = (
+        "<![CDATA[ Lorem ipsum dolor sit amet, consectetur adipiscing elit. "
+        "Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. ]]>"
+    )
+
+    assert nlp.sanitize_text(html_text) == (
+        "Lorem ipsum dolor sit amet, consectetur adipiscing elit. "
+        "Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua."
+    )
+
+
 def test_extract_stems_errors_without_spacy(monkeypatch) -> None:
     monkeypatch.setattr(spacy_models, "spacy", None)
     monkeypatch.setattr(spacy_models, "_NLP_CACHE", {})

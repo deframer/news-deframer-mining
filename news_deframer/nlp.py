@@ -27,7 +27,12 @@ def sanitize_text(value: Optional[str]) -> Optional[str]:
 
     if value is None:
         return None
-    return BeautifulSoup(value, "html.parser").get_text()
+
+    text = BeautifulSoup(value, "html.parser").get_text()
+    if "<" in text and ">" in text:
+        text = BeautifulSoup(text, "html.parser").get_text(" ", strip=True)
+
+    return text.strip()
 
 
 def stem_category(
