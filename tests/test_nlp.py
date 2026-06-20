@@ -294,6 +294,56 @@ def test_stem_category_filters_custom_stopwords(monkeypatch) -> None:
     assert nlp.stem_category("Fox News", "en", stop_words=["fox"]) == "news"
 
 
+def test_stem_noun_preserves_phrase_order(monkeypatch) -> None:
+    class DummyToken:
+        def __init__(self, lemma: str, pos: str):
+            self.lemma_ = lemma
+            self.pos_ = pos
+            self.is_alpha = True
+
+    class DummyDoc(list):
+        pass
+
+    class DummyModel:
+        def __call__(self, _: str):
+            return DummyDoc(
+                [
+                    DummyToken("Wall", "PROPN"),
+                    DummyToken("Street", "PROPN"),
+                ]
+            )
+
+    monkeypatch.setattr(nlp, "_get_spacy_model", lambda _, **kwargs: DummyModel())
+
+    assert nlp.stem_noun("en", "Wall Street") == "wall street"
+
+
+def test_stem_noun_filters_non_nouns_and_deduplicates(monkeypatch) -> None:
+    class DummyToken:
+        def __init__(self, lemma: str, pos: str, is_alpha: bool = True):
+            self.lemma_ = lemma
+            self.pos_ = pos
+            self.is_alpha = is_alpha
+
+    class DummyDoc(list):
+        pass
+
+    class DummyModel:
+        def __call__(self, _: str):
+            return DummyDoc(
+                [
+                    DummyToken("The", "DET"),
+                    DummyToken("Cat", "NOUN"),
+                    DummyToken("Cat", "NOUN"),
+                    DummyToken("Bright", "ADJ"),
+                ]
+            )
+
+    monkeypatch.setattr(nlp, "_get_spacy_model", lambda _, **kwargs: DummyModel())
+
+    assert nlp.stem_noun("en", "The Cats") == "cat"
+
+
 def test_extract_stems_simple_filters_custom_stopwords(monkeypatch) -> None:
     # Reuse the mock setup from test_extract_stems_uses_custom_stopwords_with_mock
     # but apply it to the simple function

@@ -62,6 +62,41 @@ def stem_category(
     return " ".join(lemmas) if lemmas else None
 
 
+def stem_noun(
+    language: str, word: Optional[str], config: Config | None = None
+) -> Optional[str]:
+    """Return noun/proper-noun lemmas for a single word or phrase."""
+    if not word:
+        return None
+
+    normalized = word.strip()
+    if not normalized:
+        return None
+
+    nlp = _get_spacy_model(language, config=config, with_ner=False)
+    try:
+        doc = nlp(normalized)
+    except Exception as exc:
+        raise RuntimeError("Failed to process text with spaCy model") from exc
+
+    lemmas = []
+    seen: set[str] = set()
+    for token in doc:
+        if token.pos_ not in {"NOUN", "PROPN"}:
+            continue
+        if not token.lemma_ or not token.is_alpha:
+            continue
+
+        lemma = token.lemma_.lower()
+        if lemma in seen:
+            continue
+
+        seen.add(lemma)
+        lemmas.append(lemma)
+
+    return " ".join(lemmas) if lemmas else None
+
+
 _STOPWORD_CACHE: dict[str, frozenset[str]] = {}
 
 
