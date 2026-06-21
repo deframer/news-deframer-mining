@@ -27,7 +27,12 @@ def sanitize_text(value: Optional[str]) -> Optional[str]:
 
     if value is None:
         return None
-    return BeautifulSoup(value, "html.parser").get_text()
+
+    text = BeautifulSoup(value, "html.parser").get_text()
+    if "<" in text and ">" in text:
+        text = BeautifulSoup(text, "html.parser").get_text(" ", strip=True)
+
+    return text.strip()
 
 
 def stem_category(
@@ -58,6 +63,41 @@ def stem_category(
         and not _is_stop_word(token.lemma_, language)
         and token.lemma_.lower() not in custom_stops
     ]
+
+    return " ".join(lemmas) if lemmas else None
+
+
+def stem_noun(
+    language: str, word: Optional[str], config: Config | None = None
+) -> Optional[str]:
+    """Return noun/proper-noun lemmas for a single word or phrase."""
+    if not word:
+        return None
+
+    normalized = word.strip()
+    if not normalized:
+        return None
+
+    nlp = _get_spacy_model(language, config=config, with_ner=False)
+    try:
+        doc = nlp(normalized)
+    except Exception as exc:
+        raise RuntimeError("Failed to process text with spaCy model") from exc
+
+    lemmas = []
+    seen: set[str] = set()
+    for token in doc:
+        if token.pos_ not in {"NOUN", "PROPN"}:
+            continue
+        if not token.lemma_ or not token.is_alpha:
+            continue
+
+        lemma = token.lemma_.lower()
+        if lemma in seen:
+            continue
+
+        seen.add(lemma)
+        lemmas.append(lemma)
 
     return " ".join(lemmas) if lemmas else None
 

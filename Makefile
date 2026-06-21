@@ -1,4 +1,4 @@
-.PHONY: all build clean test help lint format type-check fix start stop down logs zap run sync duckdb-ui FORCE sentiment-update analyze-text download-models-test
+.PHONY: all build clean test help lint format type-check fix start stop down logs zap run sync duckdb-ui FORCE sentiment-update analyze-text stem-stopwords-json download-models-test
 
 APP_NAME := miner
 TEXT_LANGUAGE ?= en
@@ -41,6 +41,11 @@ sentiment-update:
 # Example German: echo "Das ist ein sehr schöner Tag!" | TEXT_LANGUAGE=de make analyze-text | sed '1d' | jq -c
 analyze-text:
 	VERBOSE=1 uv run python -m news_deframer.cli.analyze_text -l "$(TEXT_LANGUAGE)"
+
+# Example: make stem-stopwords-json STOPWORDS_JSON=../news-deframer/dummy-feeds.json
+stem-stopwords-json:
+	@test -n "$(STOPWORDS_JSON)" || (printf 'Set STOPWORDS_JSON=/path/to/file.json\n' >&2; exit 1)
+	uv run stem-stopwords-json --input "$(STOPWORDS_JSON)"
 
 docker-build:
 	docker build -t $(DOCKER_REPO)/$(APP_NAME):latest -f build/package/mining/Dockerfile .

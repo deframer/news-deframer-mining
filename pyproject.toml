@@ -18,6 +18,7 @@ dependencies = [
 
 [project.scripts]
 miner-cli = "news_deframer.cli.miner:main"
+stem-stopwords-json = "news_deframer.cli.stem_stopwords_json:main"
 
 [dependency-groups]
 dev = [

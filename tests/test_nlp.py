@@ -22,6 +22,38 @@ def test_sanitize_text_strips_html() -> None:
     assert nlp.sanitize_text(html_text) == "Hello World\xa0!"
 
 
+def test_sanitize_text_strips_rss_description_html() -> None:
+    html_text = """
+    <description><![CDATA[<div><img width="1024" height="683" src="https://example.com/lorem.jpg" class="attachment-large size-large wp-post-image" alt="" style="margin-bottom: 15px;" decoding="async" fetchpriority="high" srcset="https://example.com/lorem.jpg 1024w, https://example.com/lorem-300x200.jpg 300w" sizes="(max-width: 1024px) 100vw, 1024px" /></div>
+    <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.</p>
+    <p>The post <a href="https://example.com/post">Lorem Ipsum Post</a> appeared first on <a href="https://example.com">Lorem Ipsum News</a>.</p>
+    ]]></description>
+    """
+
+    sanitized = nlp.sanitize_text(html_text)
+
+    assert sanitized is not None
+    assert "Lorem ipsum dolor sit amet" in sanitized
+    assert "Lorem Ipsum Post" in sanitized
+    assert "Lorem Ipsum News" in sanitized
+    assert "https://example.com/lorem.jpg" not in sanitized
+    assert "https://example.com/post" not in sanitized
+    assert "<img" not in sanitized
+    assert "<a " not in sanitized
+
+
+def test_sanitize_text_keeps_plain_cdata_text() -> None:
+    html_text = (
+        "<![CDATA[ Lorem ipsum dolor sit amet, consectetur adipiscing elit. "
+        "Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. ]]>"
+    )
+
+    assert nlp.sanitize_text(html_text) == (
+        "Lorem ipsum dolor sit amet, consectetur adipiscing elit. "
+        "Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua."
+    )
+
+
 def test_extract_stems_errors_without_spacy(monkeypatch) -> None:
     monkeypatch.setattr(spacy_models, "spacy", None)
     monkeypatch.setattr(spacy_models, "_NLP_CACHE", {})
@@ -292,6 +324,56 @@ def test_stem_category_filters_custom_stopwords(monkeypatch) -> None:
 
     # With stop words
     assert nlp.stem_category("Fox News", "en", stop_words=["fox"]) == "news"
+
+
+def test_stem_noun_preserves_phrase_order(monkeypatch) -> None:
+    class DummyToken:
+        def __init__(self, lemma: str, pos: str):
+            self.lemma_ = lemma
+            self.pos_ = pos
+            self.is_alpha = True
+
+    class DummyDoc(list):
+        pass
+
+    class DummyModel:
+        def __call__(self, _: str):
+            return DummyDoc(
+                [
+                    DummyToken("Wall", "PROPN"),
+                    DummyToken("Street", "PROPN"),
+                ]
+            )
+
+    monkeypatch.setattr(nlp, "_get_spacy_model", lambda _, **kwargs: DummyModel())
+
+    assert nlp.stem_noun("en", "Wall Street") == "wall street"
+
+
+def test_stem_noun_filters_non_nouns_and_deduplicates(monkeypatch) -> None:
+    class DummyToken:
+        def __init__(self, lemma: str, pos: str, is_alpha: bool = True):
+            self.lemma_ = lemma
+            self.pos_ = pos
+            self.is_alpha = is_alpha
+
+    class DummyDoc(list):
+        pass
+
+    class DummyModel:
+        def __call__(self, _: str):
+            return DummyDoc(
+                [
+                    DummyToken("The", "DET"),
+                    DummyToken("Cat", "NOUN"),
+                    DummyToken("Cat", "NOUN"),
+                    DummyToken("Bright", "ADJ"),
+                ]
+            )
+
+    monkeypatch.setattr(nlp, "_get_spacy_model", lambda _, **kwargs: DummyModel())
+
+    assert nlp.stem_noun("en", "The Cats") == "cat"
 
 
 def test_extract_stems_simple_filters_custom_stopwords(monkeypatch) -> None:
